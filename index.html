@@ -8,7 +8,7 @@
 :root{--paper:#e9e5de;--ink:#17191c}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0c0d0f;color:var(--paper)}
 body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action:none}
-#camera,#art{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
+#camera,#art,#three{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
 #camera{filter:saturate(.62) contrast(1.08) brightness(.72)}
 #art{mix-blend-mode:normal}
 #shade{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,transparent 10%,rgba(5,7,9,.2) 52%,rgba(3,4,6,.78) 100%);pointer-events:none}
@@ -30,6 +30,7 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 </head>
 <body>
 <video id="camera" autoplay muted playsinline></video>
+<canvas id="three"></canvas>
 <canvas id="art"></canvas>
 <div id="shade"></div>
 <div id="gesture"></div>
@@ -47,10 +48,12 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 </div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script>
 const video=document.querySelector('#camera');
 const canvas=document.querySelector('#art');
 const ctx=canvas.getContext('2d');
+const threeCanvas=document.querySelector('#three');
 const state=document.querySelector('#state');
 const caption=document.querySelector('#caption');
 let W=0,H=0,dpr=1,mode='membrane',strength=.82,flow=.55,running=false,processing=false,mirrored=false,currentDeviceId='';
@@ -59,13 +62,36 @@ let materialization=0,motion=.5,hadHand=false;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 const palm=[0,1,5,9,13,17,0];
-const palmFaces=[[0,1,5],[0,5,9],[0,9,13],[0,13,17],[5,9,13],[5,13,17]];
-const fingerFaces=[];
-[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]].forEach((finger,fi)=>{
-  for(let i=0;i<3;i++)fingerFaces.push([finger[i],finger[i+1],fi===0?0:[5,9,13,17][fi-1]]);
-});
+const bones=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
 
-function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+// ---------- 3D hand ----------
+const renderer3=new THREE.WebGLRenderer({canvas:threeCanvas,alpha:true,antialias:true});
+renderer3.setPixelRatio(Math.min(devicePixelRatio||1,2));
+renderer3.outputEncoding=THREE.sRGBEncoding;
+const scene3=new THREE.Scene();
+const camera3=new THREE.OrthographicCamera(0,innerWidth,0,innerHeight,-2000,2000);camera3.position.z=800;
+scene3.add(new THREE.AmbientLight(0xbfe3ea,1.15));
+const light3=new THREE.PointLight(0xd9f8ff,2.5,1800);light3.position.set(innerWidth*.35,innerHeight*.25,500);scene3.add(light3);
+const rim3=new THREE.PointLight(0xffd9e7,1.6,1600);rim3.position.set(innerWidth*.8,innerHeight*.65,350);scene3.add(rim3);
+const handMaterial=new THREE.MeshPhysicalMaterial({color:0xa9dce2,roughness:.16,metalness:.04,transmission:.48,thickness:1.2,ior:1.42,transparent:true,opacity:.78,emissive:0x225f68,emissiveIntensity:.45,depthWrite:false});
+const jointMeshes=Array.from({length:21},(_,i)=>{const mesh=new THREE.Mesh(new THREE.SphereGeometry(i===0?1.25:1,14,10),handMaterial);scene3.add(mesh);return mesh});
+const boneMeshes=bones.map(()=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,12,1),handMaterial);scene3.add(mesh);return mesh});
+const palmMesh=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),handMaterial);scene3.add(palmMesh);
+const up3=new THREE.Vector3(0,1,0),a3=new THREE.Vector3(),b3=new THREE.Vector3(),mid3=new THREE.Vector3(),dir3=new THREE.Vector3(),q3=new THREE.Quaternion();
+
+function update3DHand(){
+  if(!points)return;
+  const handScale=Math.max(42,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y));
+  const radius=handScale*.075;
+  jointMeshes.forEach((mesh,i)=>{const p=points[i];mesh.position.set(p.x,p.y,-p.z*260);mesh.scale.setScalar(radius*(i===0?1.05:.78))});
+  bones.forEach(([a,b],i)=>{const p1=points[a],p2=points[b];a3.set(p1.x,p1.y,-p1.z*260);b3.set(p2.x,p2.y,-p2.z*260);mid3.addVectors(a3,b3).multiplyScalar(.5);dir3.subVectors(b3,a3);const len=dir3.length();boneMeshes[i].position.copy(mid3);boneMeshes[i].scale.set(radius*(a===0?1.18:.72),len,radius*(a===0?1.18:.72));q3.setFromUnitVectors(up3,dir3.normalize());boneMeshes[i].setRotationFromQuaternion(q3)});
+  const centerX=(points[0].x+points[9].x+points[13].x)/3,centerY=(points[0].y+points[9].y+points[13].y)/3;
+  const angle=Math.atan2(points[9].y-points[0].y,points[9].x-points[0].x)-Math.PI/2;
+  palmMesh.position.set(centerX,centerY,-points[9].z*260+3);palmMesh.rotation.z=angle;palmMesh.scale.set(handScale*.34,handScale*.48,radius*1.7);
+  handMaterial.opacity=materialization*(.08+materialization*.72)*strength;handMaterial.emissiveIntensity=.18+materialization*.7;
+}
+
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);renderer3.setSize(W,H,false);camera3.right=W;camera3.bottom=H;camera3.updateProjectionMatrix()}
 addEventListener('resize',resize);resize();
 const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -84,44 +110,6 @@ function update(raw){
 
 function path(indices){ctx.beginPath();indices.forEach((n,i)=>{const p=points[n];i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});}
 function glowPath(indices,width,color,blur=18){ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=color;ctx.lineWidth=width;ctx.shadowColor=color;ctx.shadowBlur=blur;path(indices);ctx.stroke();ctx.restore()}
-function smoothClosedPath(indices){
-  const list=indices.map(i=>points[i]);ctx.beginPath();
-  const first=list[0],last=list[list.length-1];ctx.moveTo((last.x+first.x)/2,(last.y+first.y)/2);
-  list.forEach((p,i)=>{const n=list[(i+1)%list.length];ctx.quadraticCurveTo(p.x,p.y,(p.x+n.x)/2,(p.y+n.y)/2)});ctx.closePath();
-}
-function face(indices,fill,stroke){path(indices);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=.55;ctx.stroke()}}
-function handMass(alpha,light=false){
-  const scale=Math.max(42,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y));
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-  const gradient=ctx.createLinearGradient(points[0].x,points[0].y,points[12].x,points[12].y);
-  if(light){gradient.addColorStop(0,`rgba(65,101,116,${alpha*.55})`);gradient.addColorStop(.55,`rgba(139,205,211,${alpha})`);gradient.addColorStop(1,`rgba(225,237,230,${alpha*.6})`)}
-  else{gradient.addColorStop(0,`rgba(4,7,10,${alpha})`);gradient.addColorStop(1,`rgba(8,13,16,${alpha*.82})`)}
-  ctx.strokeStyle=gradient;
-  fingers.forEach((finger,i)=>{ctx.lineWidth=scale*(i===0?.20:.16);path(finger);ctx.stroke()});
-  smoothClosedPath(palm);ctx.fillStyle=gradient;ctx.fill();ctx.restore();
-}
-
-function drawMembrane(t){
-  const pulse=.9+Math.sin(t*.0014)*.08;
-  ctx.save();
-  // 実写の手を少し沈め、3D物質へ置換されていく境界をつくる
-  handMass(.18+strength*.34,false);
-  ctx.globalCompositeOperation='screen';
-  handMass(.16*strength,true);
-  path(palm);ctx.closePath();
-  const g=ctx.createRadialGradient(points[9].x,points[9].y,5,points[9].x,points[9].y,Math.max(80,Math.abs(points[0].y-points[12].y)*1.05));
-  g.addColorStop(0,`rgba(170,225,225,${.20*strength})`);g.addColorStop(.6,`rgba(137,177,199,${.11*strength})`);g.addColorStop(1,'rgba(20,30,40,0)');ctx.fillStyle=g;ctx.fill();
-  // ランドマークを面へ変換し、光の角度が異なる多面体として描く
-  [...palmFaces,...fingerFaces].forEach((f,i)=>{
-    const shimmer=(Math.sin(t*.0011+i*1.73)+1)/2;
-    face(f,`rgba(${125+i%3*22},${183+i%4*10},${196+i%2*18},${(.035+shimmer*.075)*strength})`,`rgba(218,238,236,${.08*strength})`);
-  });
-  fingers.forEach((f,i)=>glowPath(f,(8+i*.6)*pulse,`rgba(${170+i*7},${220-i*4},${226-i*2},${.24*strength})`,25));
-  fingers.forEach(f=>glowPath(f,1.1,'rgba(241,244,238,.72)',7));
-  path(palm);ctx.strokeStyle=`rgba(225,240,236,${.28*strength})`;ctx.lineWidth=.8;ctx.shadowColor='rgba(157,220,226,.8)';ctx.shadowBlur=12;ctx.stroke();
-  ctx.restore();
-}
-
 function drawLine(t){
   ctx.save();ctx.globalCompositeOperation='screen';
   for(let layer=0;layer<5;layer++){
@@ -156,10 +144,12 @@ function draw(t){
     materialization=Math.max(0,materialization-.035);
     if(materialization===0)hadHand=false;
   }
+  threeCanvas.style.display=mode==='membrane'?'block':'none';
   if(points&&materialization>0){
     ctx.save();ctx.globalAlpha=.08+materialization*.92;
-    if(mode==='membrane')drawMembrane(t);if(mode==='line')drawLine(t);if(mode==='trace')drawTrace();ctx.restore();
+    if(mode==='line')drawLine(t);if(mode==='trace')drawTrace();ctx.restore();
   }
+  scene3.visible=mode==='membrane'&&materialization>0;update3DHand();renderer3.render(scene3,camera3);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
