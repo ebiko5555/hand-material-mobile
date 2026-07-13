@@ -35,9 +35,9 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 <div id="shade"></div>
 <div id="gesture"></div>
 <header id="top"><span>HAND / MATERIAL</span><span style="display:flex;align-items:center;gap:10px"><span id="state">待機中</span><button id="camera-switch">カメラ切替</button></span></header>
-<div id="caption">光膜<small>指で画面をなぞると質感が変わります</small></div>
+<div id="caption">立体作品<small>指で画面をなぞると質感が変わります</small></div>
 <div id="modes" aria-label="表現切替">
-  <button class="mode on" data-mode="membrane" aria-label="光膜"></button>
+  <button class="mode on" data-mode="membrane" aria-label="立体作品"></button>
   <button class="mode" data-mode="line" aria-label="線"></button>
   <button class="mode" data-mode="trace" aria-label="残像"></button>
 </div>
@@ -64,7 +64,7 @@ const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,1
 const palm=[0,1,5,9,13,17,0];
 const bones=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
 
-// ---------- 3D hand ----------
+// ---------- 3D artwork tracking rig ----------
 const renderer3=new THREE.WebGLRenderer({canvas:threeCanvas,alpha:true,antialias:true});
 renderer3.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer3.outputEncoding=THREE.sRGBEncoding;
@@ -73,22 +73,39 @@ const camera3=new THREE.OrthographicCamera(0,innerWidth,0,innerHeight,-2000,2000
 scene3.add(new THREE.AmbientLight(0xbfe3ea,1.15));
 const light3=new THREE.PointLight(0xd9f8ff,2.5,1800);light3.position.set(innerWidth*.35,innerHeight*.25,500);scene3.add(light3);
 const rim3=new THREE.PointLight(0xffd9e7,1.6,1600);rim3.position.set(innerWidth*.8,innerHeight*.65,350);scene3.add(rim3);
+const artworkRoot=new THREE.Group();scene3.add(artworkRoot);
+const artworkAnchors=Array.from({length:21},()=>{const anchor=new THREE.Group();artworkRoot.add(anchor);return anchor});
+let attachedArtwork=null;
 const handMaterial=new THREE.MeshPhysicalMaterial({color:0xa9dce2,roughness:.16,metalness:.04,transmission:.48,thickness:1.2,ior:1.42,transparent:true,opacity:.78,emissive:0x225f68,emissiveIntensity:.45,depthWrite:false});
-const jointMeshes=Array.from({length:21},(_,i)=>{const mesh=new THREE.Mesh(new THREE.SphereGeometry(i===0?1.25:1,14,10),handMaterial);scene3.add(mesh);return mesh});
-const boneMeshes=bones.map(()=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,12,1),handMaterial);scene3.add(mesh);return mesh});
-const palmMesh=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),handMaterial);scene3.add(palmMesh);
+const fallbackArtwork=new THREE.Group();artworkRoot.add(fallbackArtwork);
+const jointMeshes=Array.from({length:21},(_,i)=>{const mesh=new THREE.Mesh(new THREE.SphereGeometry(i===0?1.25:1,14,10),handMaterial);fallbackArtwork.add(mesh);return mesh});
+const boneMeshes=bones.map(()=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,12,1),handMaterial);fallbackArtwork.add(mesh);return mesh});
+const palmMesh=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),handMaterial);fallbackArtwork.add(palmMesh);
 const up3=new THREE.Vector3(0,1,0),a3=new THREE.Vector3(),b3=new THREE.Vector3(),mid3=new THREE.Vector3(),dir3=new THREE.Vector3(),q3=new THREE.Quaternion();
+
+// Blender作品を接続するための入口。21個のanchorがMediaPipeの関節と同じ順番で動く。
+window.attachHandArtwork=(object3D)=>{
+  if(attachedArtwork)artworkRoot.remove(attachedArtwork);
+  attachedArtwork=object3D||null;
+  fallbackArtwork.visible=!attachedArtwork;
+  if(attachedArtwork)artworkRoot.add(attachedArtwork);
+  return {root:artworkRoot,anchors:artworkAnchors};
+};
+window.handArtworkRig={root:artworkRoot,anchors:artworkAnchors,attach:window.attachHandArtwork};
 
 function update3DHand(){
   if(!points)return;
   const handScale=Math.max(42,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y));
   const radius=handScale*.075;
-  jointMeshes.forEach((mesh,i)=>{const p=points[i];mesh.position.set(p.x,p.y,-p.z*260);mesh.scale.setScalar(radius*(i===0?1.05:.78))});
+  jointMeshes.forEach((mesh,i)=>{const p=points[i];mesh.position.set(p.x,p.y,-p.z*260);mesh.scale.setScalar(radius*(i===0?1.05:.78));artworkAnchors[i].position.copy(mesh.position)});
   bones.forEach(([a,b],i)=>{const p1=points[a],p2=points[b];a3.set(p1.x,p1.y,-p1.z*260);b3.set(p2.x,p2.y,-p2.z*260);mid3.addVectors(a3,b3).multiplyScalar(.5);dir3.subVectors(b3,a3);const len=dir3.length();boneMeshes[i].position.copy(mid3);boneMeshes[i].scale.set(radius*(a===0?1.18:.72),len,radius*(a===0?1.18:.72));q3.setFromUnitVectors(up3,dir3.normalize());boneMeshes[i].setRotationFromQuaternion(q3)});
+  fingers.forEach(finger=>finger.slice(0,-1).forEach((index,j)=>{const next=finger[j+1];dir3.subVectors(artworkAnchors[next].position,artworkAnchors[index].position).normalize();q3.setFromUnitVectors(up3,dir3);artworkAnchors[index].quaternion.copy(q3)}));
   const centerX=(points[0].x+points[9].x+points[13].x)/3,centerY=(points[0].y+points[9].y+points[13].y)/3;
   const angle=Math.atan2(points[9].y-points[0].y,points[9].x-points[0].x)-Math.PI/2;
   palmMesh.position.set(centerX,centerY,-points[9].z*260+3);palmMesh.rotation.z=angle;palmMesh.scale.set(handScale*.34,handScale*.48,radius*1.7);
   handMaterial.opacity=materialization*(.08+materialization*.72)*strength;handMaterial.emissiveIntensity=.18+materialization*.7;
+  artworkRoot.userData.pose={points,handScale,radius,materialization};
+  if(attachedArtwork?.userData?.updateHandPose)attachedArtwork.userData.updateHandPose(artworkRoot.userData.pose,artworkAnchors);
 }
 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);renderer3.setSize(W,H,false);camera3.right=W;camera3.bottom=H;camera3.updateProjectionMatrix()}
@@ -192,7 +209,7 @@ document.querySelector('#start-button').onclick=async()=>{
   try{await useCamera();await chooseRearCamera();document.querySelector('#start').remove();running=true;state.textContent=mirrored?'内側カメラ':'外側カメラ';loop()}catch(e){state.textContent='カメラを使用できません';alert('Safariのカメラ使用を許可してください')}
 };
 
-const labels={membrane:'光膜',line:'線',trace:'残像'};
+const labels={membrane:'立体作品',line:'線',trace:'残像'};
 document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('on',x===b));caption.childNodes[0].nodeValue=labels[mode];trails.forEach(t=>t.length=0)});
 
 let startTouch=null;
