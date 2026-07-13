@@ -12,7 +12,7 @@ body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;touch-actio
 button{font:inherit}
 #camera,#art,#three,#shade{position:fixed;inset:0;width:100%;height:100%}
 #camera{z-index:0;object-fit:cover;opacity:.92;filter:saturate(.68) contrast(.89) brightness(1.03) sepia(.04)}
-#shade{z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 44%,rgba(255,250,242,.04) 12%,rgba(108,99,88,.08) 68%,rgba(65,61,57,.25) 100%),linear-gradient(160deg,rgba(244,232,218,.1),rgba(111,137,132,.07) 62%,rgba(197,143,139,.07))}
+#shade{z-index:1;pointer-events:none}
 #three{z-index:2;pointer-events:none}
 #art{z-index:3;pointer-events:none}
 #invitation,#reflection{position:fixed;left:24px;right:24px;z-index:5;text-align:center;pointer-events:none;font-weight:400;letter-spacing:.18em;text-shadow:0 1px 12px rgba(255,250,242,.5);opacity:0;transition:opacity 2.2s ease}
@@ -46,7 +46,7 @@ button{font:inherit}
 <video id="camera" autoplay muted playsinline></video>
 <canvas id="three"></canvas>
 <canvas id="art"></canvas>
-<div id="shade"></div>
+<canvas id="shade"></canvas>
 <div id="invitation" aria-live="polite">手を、ひらいてください</div>
 <div id="reflection">いま、自分の手を見てください</div>
 <button id="camera-switch" type="button" aria-label="カメラを切り替える">カメラ</button>
@@ -74,6 +74,8 @@ button{font:inherit}
 const video=document.querySelector('#camera');
 const canvas=document.querySelector('#art');
 const ctx=canvas.getContext('2d');
+const shade=document.querySelector('#shade');
+const sctx=shade.getContext('2d');
 const threeCanvas=document.querySelector('#three');
 const invitation=document.querySelector('#invitation');
 const reflection=document.querySelector('#reflection');
@@ -195,6 +197,7 @@ const orbPosition=new THREE.Vector3(),targetPosition=new THREE.Vector3();
 function resize(){
   dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
   canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  shade.width=W*dpr;shade.height=H*dpr;shade.style.width=W+'px';shade.style.height=H+'px';sctx.setTransform(dpr,0,0,dpr,0,0);
   renderer3.setSize(W,H,false);camera3.right=W;camera3.bottom=H;camera3.updateProjectionMatrix();
   light3.position.set(W*.3,H*.18,560);fill3.position.set(W*.8,H*.52,440);rose3.position.set(W*.82,H*.75,320);
 }
@@ -204,11 +207,14 @@ const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 function beginExperience(){
   experienceAlpha=0;focusIndex=0;focusProgress=0;cycleComplete=false;completeAt=0;orbInitialized=false;orbTrail.length=0;handTrail.length=0;
   orbGroups.forEach(g=>g.visible=false);
-  orbTypeIndex=manualOrbIndex??Math.floor(Math.random()*orbGroups.length);orbGroup=orbGroups[orbTypeIndex];
+  if(manualOrbIndex!==null)orbTypeIndex=manualOrbIndex;
+  else orbTypeIndex=(orbTypeIndex+1+Math.floor(Math.random()*(orbGroups.length-1)))%orbGroups.length;
+  orbGroup=orbGroups[orbTypeIndex];
   clearTimeout(reflectionTimer);reflection.classList.remove('is-visible');
 }
 
 function update(raw){
+  const gap=performance.now()-lastSeen;
   const next=raw.map(map);
   if(!points){points=next;motion=.5}
   else{
@@ -217,6 +223,7 @@ function update(raw){
   }
   lastSeen=performance.now();
   if(!hadHand){beginExperience();hadHand=true}
+  else if(gap>2500)beginExperience();
   hideInvitation();
 }
 
@@ -286,6 +293,33 @@ function updateHandTrail(t,visible){
   if(handTrail.length>12)handTrail.shift();
 }
 
+/* 背景をベージュの膜で隠し、手のまわりだけ柔らかく開く */
+let shadeX=0,shadeY=0,shadeR=0;
+function drawShade(dt){
+  sctx.clearRect(0,0,W,H);
+  sctx.fillStyle='rgba(233,224,213,.93)';
+  sctx.fillRect(0,0,W,H);
+  if(points&&experienceAlpha>0){
+    const ids=[0,5,9,13,17];
+    let px=0,py=0;ids.forEach(id=>{px+=points[id].x;py+=points[id].y});px/=ids.length;py/=ids.length;
+    const targetR=handScale()*2.3;
+    if(!shadeR){shadeX=px;shadeY=py;shadeR=targetR}
+    else{
+      const k=1-Math.exp(-dt*5);
+      shadeX=lerp(shadeX,px,k);shadeY=lerp(shadeY,py,k);shadeR=lerp(shadeR,targetR,k);
+    }
+    const open=.92*experienceAlpha;
+    const hole=sctx.createRadialGradient(shadeX,shadeY,0,shadeX,shadeY,shadeR);
+    hole.addColorStop(0,`rgba(0,0,0,${open})`);
+    hole.addColorStop(.5,`rgba(0,0,0,${open*.85})`);
+    hole.addColorStop(1,'rgba(0,0,0,0)');
+    sctx.globalCompositeOperation='destination-out';
+    sctx.fillStyle=hole;
+    sctx.beginPath();sctx.arc(shadeX,shadeY,shadeR,0,Math.PI*2);sctx.fill();
+    sctx.globalCompositeOperation='source-over';
+  }else if(experienceAlpha<=0)shadeR=0;
+}
+
 function drawTraces(dt){
   ctx.clearRect(0,0,W,H);
   if(orbTrail.length>1){
@@ -331,7 +365,7 @@ function draw(t){
       hadHand=false;points=null;beginExperience();showInvitation();
     }
   }
-  updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
+  drawShade(dt);updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
