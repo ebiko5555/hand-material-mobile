@@ -10,7 +10,7 @@
 body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action:none}
 #camera,#art{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
 #camera{filter:saturate(.62) contrast(1.08) brightness(.72)}
-#art{mix-blend-mode:screen}
+#art{mix-blend-mode:normal}
 #shade{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,transparent 10%,rgba(5,7,9,.2) 52%,rgba(3,4,6,.78) 100%);pointer-events:none}
 #top{position:fixed;left:20px;right:20px;top:max(18px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:3;letter-spacing:.19em;font-size:10px}
 #state{opacity:.62}
@@ -58,6 +58,12 @@ let points=null,previous=null,lastSeen=0;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 const palm=[0,1,5,9,13,17,0];
+const silhouette=[0,1,2,3,4,3,2,5,6,7,8,7,6,9,10,11,12,11,10,13,14,15,16,15,14,17,18,19,20,19,18,17,0];
+const palmFaces=[[0,1,5],[0,5,9],[0,9,13],[0,13,17],[5,9,13],[5,13,17]];
+const fingerFaces=[];
+[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]].forEach((finger,fi)=>{
+  for(let i=0;i<3;i++)fingerFaces.push([finger[i],finger[i+1],fi===0?0:[5,9,13,17][fi-1]]);
+});
 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
@@ -74,15 +80,33 @@ function update(raw){
 
 function path(indices){ctx.beginPath();indices.forEach((n,i)=>{const p=points[n];i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});}
 function glowPath(indices,width,color,blur=18){ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=color;ctx.lineWidth=width;ctx.shadowColor=color;ctx.shadowBlur=blur;path(indices);ctx.stroke();ctx.restore()}
+function smoothClosedPath(indices){
+  const list=indices.map(i=>points[i]);ctx.beginPath();
+  const first=list[0],last=list[list.length-1];ctx.moveTo((last.x+first.x)/2,(last.y+first.y)/2);
+  list.forEach((p,i)=>{const n=list[(i+1)%list.length];ctx.quadraticCurveTo(p.x,p.y,(p.x+n.x)/2,(p.y+n.y)/2)});ctx.closePath();
+}
+function face(indices,fill,stroke){path(indices);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=.55;ctx.stroke()}}
 
 function drawMembrane(t){
   const pulse=.9+Math.sin(t*.0014)*.08;
-  ctx.save();ctx.globalCompositeOperation='lighter';
+  ctx.save();
+  // 実写の手を少し沈め、3D物質へ置換されていく境界をつくる
+  smoothClosedPath(silhouette);ctx.fillStyle=`rgba(4,7,10,${.18+strength*.34})`;ctx.fill();
+  ctx.globalCompositeOperation='screen';
+  smoothClosedPath(silhouette);
+  const body=ctx.createLinearGradient(points[0].x,points[0].y,points[12].x,points[12].y);
+  body.addColorStop(0,`rgba(70,105,119,${.12*strength})`);body.addColorStop(.48,`rgba(148,205,211,${.24*strength})`);body.addColorStop(1,`rgba(226,238,232,${.11*strength})`);ctx.fillStyle=body;ctx.fill();
   path(palm);ctx.closePath();
   const g=ctx.createRadialGradient(points[9].x,points[9].y,5,points[9].x,points[9].y,Math.max(80,Math.abs(points[0].y-points[12].y)*1.05));
   g.addColorStop(0,`rgba(170,225,225,${.20*strength})`);g.addColorStop(.6,`rgba(137,177,199,${.11*strength})`);g.addColorStop(1,'rgba(20,30,40,0)');ctx.fillStyle=g;ctx.fill();
+  // ランドマークを面へ変換し、光の角度が異なる多面体として描く
+  [...palmFaces,...fingerFaces].forEach((f,i)=>{
+    const shimmer=(Math.sin(t*.0011+i*1.73)+1)/2;
+    face(f,`rgba(${125+i%3*22},${183+i%4*10},${196+i%2*18},${(.035+shimmer*.075)*strength})`,`rgba(218,238,236,${.08*strength})`);
+  });
   fingers.forEach((f,i)=>glowPath(f,(8+i*.6)*pulse,`rgba(${170+i*7},${220-i*4},${226-i*2},${.24*strength})`,25));
   fingers.forEach(f=>glowPath(f,1.1,'rgba(241,244,238,.72)',7));
+  smoothClosedPath(silhouette);ctx.strokeStyle=`rgba(225,240,236,${.28*strength})`;ctx.lineWidth=.8;ctx.shadowColor='rgba(157,220,226,.8)';ctx.shadowBlur=12;ctx.stroke();
   ctx.restore();
 }
 
