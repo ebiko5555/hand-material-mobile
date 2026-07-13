@@ -71,17 +71,17 @@ const cameraSwitch=document.querySelector('#camera-switch');
 let W=0,H=0,dpr=1,running=false,processing=false,mirrored=false,currentDeviceId='',currentFacingMode='';
 let points=null,lastSeen=0,motion=.5,hadHand=false;
 let experienceAlpha=0,focusIndex=0,focusProgress=0,cycleComplete=false,completeAt=0,lastFrame=0;
-let orbInitialized=false,orbTrailTime=0,reflectionTimer=0,cameraSwitchTimer=0,orbTypeIndex=0,orbTypeChangeTime=0;
+let orbInitialized=false,orbTrailTime=0,reflectionTimer=0,cameraSwitchTimer=0,orbTypeIndex=0,handTrailTime=0;
 const nailTips=[4,8,12,16,20];
 const nailBases=[3,7,11,15,19];
-const nailReveal=Array(5).fill(0);
-const nailTargets=Array(5).fill(0);
 const orbTrail=[];
+const handTrail=[];
+const HAND_CHAINS=[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20],[0,1,5,9,13,17,0]];
 const clamp=(value,min=0,max=1)=>Math.max(min,Math.min(max,value));
 const smoothstep=(edge0,edge1,value)=>{const x=clamp((value-edge0)/(edge1-edge0));return x*x*(3-2*x)};
 const lerp=(a,b,t)=>a+(b-a)*t;
 
-// ---------- 触覚を想起させる球体と、指先に残る爪 ----------
+// ---------- 触覚を想起させる球体と、手の残像 ----------
 const renderer3=new THREE.WebGLRenderer({canvas:threeCanvas,alpha:true,antialias:true});
 renderer3.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer3.outputEncoding=THREE.sRGBEncoding;
@@ -128,12 +128,6 @@ const makeOrbGroup=(typeIndex)=>{
 const orbGroups=[makeOrbGroup(0),makeOrbGroup(1)];
 let orbGroup=orbGroups[0];
 
-const nailColors=[0xe4beb5,0xd8c8b9,0xb9d1ca,0xe1c0c4,0xc8c7ad];
-const nailGeometry=new THREE.SphereGeometry(1,28,18);
-const nails=nailColors.map(color=>{
-  const material=new THREE.MeshPhysicalMaterial({color,roughness:.28,metalness:0,transmission:.32,thickness:.26,ior:1.38,clearcoat:.5,clearcoatRoughness:.2,transparent:true,opacity:0,depthWrite:false,depthTest:false,emissive:color,emissiveIntensity:.035});
-  const nail=new THREE.Mesh(nailGeometry,material);nail.visible=false;scene3.add(nail);return nail;
-});
 const orbPosition=new THREE.Vector3(),targetPosition=new THREE.Vector3();
 
 function resize(){
@@ -146,9 +140,10 @@ addEventListener('resize',resize);resize();
 const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 
 function beginExperience(){
-  experienceAlpha=0;focusIndex=0;focusProgress=0;cycleComplete=false;completeAt=0;orbInitialized=false;orbTrail.length=0;
-  orbTypeIndex=Math.floor(Math.random()*orbGroups.length);orbGroup=orbGroups[orbTypeIndex];orbTypeChangeTime=performance.now();
-  nailReveal.fill(0);nailTargets.fill(0);clearTimeout(reflectionTimer);reflection.classList.remove('is-visible');
+  experienceAlpha=0;focusIndex=0;focusProgress=0;cycleComplete=false;completeAt=0;orbInitialized=false;orbTrail.length=0;handTrail.length=0;
+  orbGroups.forEach(g=>g.visible=false);
+  orbTypeIndex=Math.floor(Math.random()*orbGroups.length);orbGroup=orbGroups[orbTypeIndex];
+  clearTimeout(reflectionTimer);reflection.classList.remove('is-visible');
 }
 
 function update(raw){
@@ -172,7 +167,7 @@ function nailPose(index){
 }
 
 function focusTarget(){
-  if(focusIndex===0){
+  if(focusIndex===0||cycleComplete){
     const ids=[0,5,9,13,17],p=ids.reduce((sum,id)=>({x:sum.x+points[id].x,y:sum.y+points[id].y,z:sum.z+points[id].z}),{x:0,y:0,z:0});
     targetPosition.set(p.x/ids.length,p.y/ids.length,-(p.z/ids.length)*260+26);
   }else{
@@ -186,7 +181,6 @@ function updateFocus(t,dt){
   const stillness=1-smoothstep(.0014,.009,motion);
   focusProgress+=dt*(.45+.55*stillness)/1.35;
   if(focusProgress<1)return;
-  if(focusIndex>0)nailTargets[focusIndex-1]=1;
   focusIndex+=1;focusProgress=0;
   if(focusIndex>5){focusIndex=5;cycleComplete=true;completeAt=t;showReflection()}
 }
@@ -202,47 +196,65 @@ function showReflection(){
 
 function updateOrb(t,dt,visible){
   if(!points||experienceAlpha<=0){orbGroups.forEach(g=>g.visible=false);return}
-  if(t-orbTypeChangeTime>4800&&Math.random()>.7){
-    orbGroup.visible=false;
-    orbTypeIndex=(orbTypeIndex+1)%orbGroups.length;
-    orbGroup=orbGroups[orbTypeIndex];
-    orbTypeChangeTime=t;
-  }
   const target=focusTarget();
   if(!orbInitialized){orbPosition.copy(target);orbInitialized=true}
   else orbPosition.lerp(target,1-Math.exp(-dt*4.5));
-  const guideFade=cycleComplete?clamp(1-(t-completeAt)/3600):1;
+  const guideFade=cycleComplete?lerp(1,.62,clamp((t-completeAt)/3600)):1;
   const visibility=experienceAlpha*guideFade;
   const radius=handScale()*.17*(1+Math.sin(t*.00155)*.045);
   orbGroup.visible=visibility>.01;orbGroup.position.copy(orbPosition);orbGroup.scale.setScalar(radius);
   orbGroup.rotation.y=t*.00018;orbGroup.rotation.x=Math.sin(t*.00033)*.12;
-  orbGroup._orb.materials.forEach(m=>m.opacity=m.constructor.name==='PointsMaterial'?.38*visibility:.36*visibility);
-  if(orbGroup._orb.materials.length>1)orbGroup._orb.materials[1].opacity=.15*visibility;
-  orbGroup._orb.materials.forEach(m=>{if(m.size)m.size=5.5+radius*.055});
+  const mats=orbGroup._orb.materials;
+  if(orbGroup._orb.type==='crystal'){mats[0].opacity=.36*visibility;mats[1].opacity=.15*visibility}
+  else{mats[0].opacity=.38*visibility;mats[0].size=5.5+radius*.055}
   if(visible&&visibility>.08&&t-orbTrailTime>58){
     orbTrailTime=t;orbTrail.push({x:orbPosition.x,y:orbPosition.y,life:.92*visibility});if(orbTrail.length>100)orbTrail.shift();
   }
 }
 
-function updateNails(dt){
-  nails.forEach((nail,index)=>{
-    nailReveal[index]+=((nailTargets[index]-nailReveal[index])*(1-Math.pow(.06,dt)));
-    const alpha=nailReveal[index]*experienceAlpha;
-    if(!points||alpha<.005){nail.visible=false;return}
-    const pose=nailPose(index),growth=.62+.38*smoothstep(0,1,nailReveal[index]);
-    nail.visible=true;nail.position.set(pose.x,pose.y,pose.z);nail.rotation.set(0,0,pose.angle);
-    nail.scale.set(pose.width*growth,pose.length*growth,pose.depth*growth);
-    nail.material.opacity=.76*alpha;nail.material.emissiveIntensity=.02+.035*alpha;
+function updateHandTrail(t,visible){
+  if(!visible||!points||experienceAlpha<.12)return;
+  if(t-handTrailTime<150)return;
+  const last=handTrail[handTrail.length-1];
+  if(last&&Math.hypot(points[9].x-last.pts[9].x,points[9].y-last.pts[9].y)<7)return;
+  handTrailTime=t;
+  handTrail.push({
+    pts:points.map(p=>({x:p.x+(Math.random()-.5)*3,y:p.y+(Math.random()-.5)*3})),
+    width:.85+Math.random()*.5,
+    life:.9*experienceAlpha
   });
+  if(handTrail.length>12)handTrail.shift();
 }
 
-function drawOrbTrail(dt){
+function drawTraces(dt){
   ctx.clearRect(0,0,W,H);
   if(orbTrail.length>1){
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
     orbTrail.forEach((point,index)=>{index?ctx.lineTo(point.x,point.y):ctx.moveTo(point.x,point.y)});
     const average=orbTrail.reduce((sum,point)=>sum+point.life,0)/orbTrail.length;
     ctx.strokeStyle=`rgba(120,151,143,${average*.2*experienceAlpha})`;ctx.lineWidth=1.15;ctx.shadowColor='rgba(229,238,230,.45)';ctx.shadowBlur=6;ctx.stroke();ctx.restore();
+  }
+  if(handTrail.length){
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.shadowColor='rgba(238,232,222,.35)';ctx.shadowBlur=5;
+    handTrail.forEach(snap=>{
+      const alpha=clamp(snap.life)*.14*Math.max(experienceAlpha,.35);
+      if(alpha<=0)return;
+      ctx.strokeStyle=`rgba(122,150,142,${alpha})`;ctx.lineWidth=snap.width;
+      ctx.beginPath();
+      HAND_CHAINS.forEach(chain=>{
+        const first=snap.pts[chain[0]];ctx.moveTo(first.x,first.y);
+        for(let i=1;i<chain.length-1;i++){
+          const a=snap.pts[chain[i]],b=snap.pts[chain[i+1]];
+          ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2);
+        }
+        const end=snap.pts[chain[chain.length-1]];ctx.lineTo(end.x,end.y);
+      });
+      ctx.stroke();
+    });
+    ctx.restore();
+    handTrail.forEach(snap=>snap.life-=dt*.16);
+    while(handTrail.length&&handTrail[0].life<=0)handTrail.shift();
   }
   orbTrail.forEach(point=>point.life-=dt*(cycleComplete?.34:.115));
   while(orbTrail.length&&orbTrail[0].life<=0)orbTrail.shift();
@@ -259,7 +271,7 @@ function draw(t){
       hadHand=false;points=null;beginExperience();showInvitation();
     }
   }
-  updateOrb(t,dt,visible);updateNails(dt);drawOrbTrail(dt);renderer3.render(scene3,camera3);
+  updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
