@@ -101,8 +101,8 @@ new THREE.GLTFLoader().load('assets/grasping-hand.glb',gltf=>{
   model.traverse(child=>{
     if(!child.isMesh)return;
     child.material=child.material.clone();
-    child.material.color.set(0xa9dce2);
-    child.material.roughness=.28;
+    child.material.color.set(0xb8d2d3);
+    child.material.roughness=.34;
     child.material.metalness=.08;
     child.material.transparent=true;
     child.material.opacity=0;
@@ -110,7 +110,10 @@ new THREE.GLTFLoader().load('assets/grasping-hand.glb',gltf=>{
     artworkMaterials.push(child.material);
   });
   const holder=new THREE.Group(),centeredModel=new THREE.Group();
-  centeredModel.position.copy(center).multiplyScalar(-1);centeredModel.add(model);holder.add(centeredModel);
+  centeredModel.position.copy(center).multiplyScalar(-1);
+  // この作品は前腕が長いため、外接箱の中心ではなく手のひらを追跡位置へ合わせる。
+  centeredModel.position.y+=size.y*.18;
+  centeredModel.add(model);holder.add(centeredModel);
   holder.userData.updateHandPose=(pose)=>{
     const p0=pose.points[0],p9=pose.points[9],p5=pose.points[5],p17=pose.points[17];
     const palmX=(p0.x+p5.x+p9.x+p17.x)/4,palmY=(p0.y+p5.y+p9.y+p17.y)/4;
@@ -118,7 +121,7 @@ new THREE.GLTFLoader().load('assets/grasping-hand.glb',gltf=>{
     holder.position.set(palmX,palmY,-p9.z*260+8);
     holder.rotation.z=Math.atan2(p9.y-p0.y,p9.x-p0.x)-Math.PI/2;
     holder.scale.setScalar(scale);
-    artworkMaterials.forEach(material=>material.opacity=pose.materialization*(.18+strength*.72));
+    artworkMaterials.forEach(material=>material.opacity=pose.materialization*(.28+strength*.68));
   };
   attachHandArtwork(holder);
 },undefined,()=>{state.textContent='3D作品を読み込めません'});
