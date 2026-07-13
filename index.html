@@ -149,11 +149,11 @@ const ORB_TYPES=[
     group.add(new THREE.Mesh(new THREE.SphereGeometry(1,36,28),coreMaterial));
     const innerMaterial=new THREE.MeshBasicMaterial(overlay({color:0xf6dfd5}));
     group.add(new THREE.Mesh(new THREE.SphereGeometry(.58,24,18),innerMaterial));
-    return(v)=>{coreMaterial.opacity=.62*v;innerMaterial.opacity=.28*v};
+    return(v)=>{coreMaterial.opacity=.82*v;innerMaterial.opacity=.4*v};
   }},
   {key:'fuzzy',build(group){
     const fuzz=makeFuzz(190,1.04,.012,7,0xe8eee7);group.add(fuzz);
-    return(v,radius)=>{fuzz.material.opacity=.66*v;fuzz.material.size=6+radius*.06};
+    return(v,radius)=>{fuzz.material.opacity=.88*v;fuzz.material.size=7+radius*.07};
   }},
   {key:'water',build(group){
     const waterMaterial=new THREE.MeshPhysicalMaterial(overlay({color:0xdcecea,roughness:.05,metalness:0,transmission:.85,thickness:.6,ior:1.33,clearcoat:.9,clearcoatRoughness:.08,emissive:0x9db8b4,emissiveIntensity:.02}));
@@ -161,7 +161,7 @@ const ORB_TYPES=[
     const glintMaterial=new THREE.MeshBasicMaterial(overlay({color:0xffffff}));
     const glint=new THREE.Mesh(new THREE.SphereGeometry(.15,12,10),glintMaterial);glint.position.set(-.34,-.3,.62);group.add(glint);
     return(v,radius,t)=>{
-      waterMaterial.opacity=.56*v;glintMaterial.opacity=.62*v;
+      waterMaterial.opacity=.75*v;glintMaterial.opacity=.8*v;
       blob.scale.set(1.22+Math.sin(t*.0019)*.055,.9+Math.sin(t*.0016+1.4)*.055,.55);
     };
   }},
@@ -173,7 +173,7 @@ const ORB_TYPES=[
       const breath=Math.sin(t*.0011)*.05;
       shell.scale.set(1.5+breath,1.82+breath*1.3,1.5+breath);
       silk.scale.setScalar(1.12+breath);
-      shellMaterial.opacity=.28*v;silk.material.opacity=.38*v;silk.material.size=4.8+radius*.045;
+      shellMaterial.opacity=.42*v;silk.material.opacity=.52*v;silk.material.size=5.4+radius*.05;
     };
   }},
   {key:'stone',build(group){
@@ -181,7 +181,7 @@ const ORB_TYPES=[
     const stone=new THREE.Mesh(jitterGeometry(new THREE.SphereGeometry(1,40,30),.045),stoneMaterial);
     stone.scale.set(1.18,.92,.65);stone.rotation.z=.35;group.add(stone);
     return(v,radius,t)=>{
-      stoneMaterial.opacity=.82*v;
+      stoneMaterial.opacity=.96*v;
       stoneMaterial.emissiveIntensity=.03+.03*(1+Math.sin(t*.0009))/2;
     };
   }}
@@ -270,7 +270,7 @@ function updateOrb(t,dt,visible){
   else orbPosition.lerp(target,1-Math.exp(-dt*4.5));
   const guideFade=cycleComplete?lerp(1,.85,clamp((t-completeAt)/3600)):1;
   const visibility=experienceAlpha*guideFade;
-  const radius=handScale()*.17*(1+Math.sin(t*.00155)*.045);
+  const radius=handScale()*.2*(1+Math.sin(t*.00155)*.045);
   orbGroup.visible=visibility>.01;orbGroup.position.copy(orbPosition);orbGroup.scale.setScalar(radius);
   orbGroup.rotation.y=t*.00018;orbGroup.rotation.x=Math.sin(t*.00033)*.12;
   orbGroup._update(visibility,radius,t);
@@ -297,12 +297,12 @@ function updateHandTrail(t,visible){
 let shadeX=0,shadeY=0,shadeR=0;
 function drawShade(dt){
   sctx.clearRect(0,0,W,H);
-  sctx.fillStyle='rgba(233,224,213,.93)';
+  sctx.fillStyle='rgba(233,224,213,.975)';
   sctx.fillRect(0,0,W,H);
   if(points&&experienceAlpha>0){
     const ids=[0,5,9,13,17];
     let px=0,py=0;ids.forEach(id=>{px+=points[id].x;py+=points[id].y});px/=ids.length;py/=ids.length;
-    const targetR=handScale()*2.3;
+    const targetR=handScale()*2.1;
     if(!shadeR){shadeX=px;shadeY=py;shadeR=targetR}
     else{
       const k=1-Math.exp(-dt*5);
