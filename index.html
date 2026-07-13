@@ -3,29 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>HAND / MATERIAL</title>
+<title>手を、ひらく</title>
 <style>
-:root{--paper:#e9e5de;--ink:#17191c}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0c0d0f;color:var(--paper)}
-body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action:none}
-#camera,#art,#three{position:fixed;inset:0;width:100%;height:100%;object-fit:cover}
-#camera{filter:saturate(.62) contrast(1.08) brightness(.72)}
-#art{mix-blend-mode:normal}
-#shade{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,transparent 10%,rgba(5,7,9,.2) 52%,rgba(3,4,6,.78) 100%);pointer-events:none}
-#top{position:fixed;left:20px;right:20px;top:max(18px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:3;letter-spacing:.19em;font-size:10px}
-#state{opacity:.62}
-#camera-switch{font:inherit;color:inherit;background:rgba(10,12,14,.28);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 11px;letter-spacing:.12em;display:none}
-#caption{position:fixed;left:20px;bottom:max(23px,env(safe-area-inset-bottom));z-index:3;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:18px;letter-spacing:.14em}
-#caption small{display:block;margin-top:8px;font-family:sans-serif;font-size:9px;letter-spacing:.15em;opacity:.48}
-#modes{position:fixed;right:18px;bottom:max(25px,env(safe-area-inset-bottom));z-index:4;display:flex;gap:10px}
-.mode{width:9px;height:9px;border:1px solid rgba(255,255,255,.5);border-radius:50%;background:transparent;padding:0}
-.mode.on{background:var(--paper);box-shadow:0 0 15px rgba(220,238,242,.8)}
-#start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:#111316}
-#start-inner{text-align:center;padding:32px}
-#start h1{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:400;font-size:24px;letter-spacing:.2em;margin:0 0 18px}
-#start p{font-size:11px;line-height:2;letter-spacing:.12em;opacity:.56;margin:0 0 30px}
-#start button{font:inherit;color:inherit;background:transparent;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:13px 36px;letter-spacing:.2em}
-#gesture{position:fixed;inset:0;z-index:2}
+:root{color-scheme:light;--milk:#f1ece3;--skin:#d8c6b6;--shadow:#718b86;--rose:#c99591;--ink:#403b36}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#cfc6ba;color:var(--ink)}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho",serif;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{font:inherit}
+#camera,#art,#three,#shade{position:fixed;inset:0;width:100%;height:100%}
+#camera{z-index:0;object-fit:cover;opacity:.92;filter:saturate(.72) contrast(.92) brightness(1.06) sepia(.05)}
+#shade{z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 44%,rgba(255,250,242,.04) 12%,rgba(108,99,88,.08) 68%,rgba(65,61,57,.25) 100%),linear-gradient(160deg,rgba(244,232,218,.1),rgba(111,137,132,.07) 62%,rgba(197,143,139,.07))}
+#three{z-index:2;pointer-events:none}
+#art{z-index:3;pointer-events:none}
+#invitation,#reflection{position:fixed;left:24px;right:24px;z-index:5;text-align:center;pointer-events:none;font-weight:400;letter-spacing:.18em;text-shadow:0 1px 12px rgba(255,250,242,.5);opacity:0;transition:opacity 2.2s ease}
+#invitation{bottom:max(11vh,calc(44px + env(safe-area-inset-bottom)));font-size:14px;color:rgba(54,49,44,.76)}
+#reflection{top:50%;transform:translateY(-50%);font-size:17px;line-height:2;color:rgba(55,48,43,.84)}
+#invitation.is-visible,#reflection.is-visible{opacity:1}
+#camera-switch{position:fixed;z-index:6;right:14px;top:max(12px,env(safe-area-inset-top));min-width:44px;min-height:44px;border:0;background:transparent;color:rgba(57,52,47,.42);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:9px;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity 1.4s ease}
+#camera-switch.is-ready{opacity:.46;pointer-events:auto}
+#camera-switch.is-dim{opacity:.12}
+#camera-switch:focus-visible{opacity:.8;outline:1px solid rgba(64,59,54,.3);outline-offset:-5px}
+#start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 28% 22%,rgba(255,250,243,.94),transparent 34%),radial-gradient(circle at 77% 72%,rgba(185,205,199,.34),transparent 43%),linear-gradient(145deg,#eee6db 0%,#ddd1c3 57%,#cdbfb2 100%);transition:opacity 2.4s cubic-bezier(.22,.61,.36,1),visibility 0s linear 2.4s}
+#start::after{content:"";position:absolute;inset:8%;border:1px solid rgba(93,79,68,.08);pointer-events:none}
+#start.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
+#start-inner{position:relative;width:min(86vw,440px);padding:42px 30px 88px;text-align:center}
+#start h1{margin:0 0 56px;font-weight:400;font-size:clamp(21px,5.8vw,28px);line-height:1.9;letter-spacing:.25em;text-indent:.25em;color:rgba(57,50,44,.9)}
+#start h1 span{display:block}
+#start-button{min-height:48px;padding:10px 8px;border:0;border-bottom:1px solid rgba(64,55,49,.42);border-radius:0;background:transparent;color:rgba(57,50,44,.78);font-size:13px;letter-spacing:.22em;cursor:pointer;transition:color .8s ease,border-color .8s ease,opacity .8s ease}
+#start-button:disabled{opacity:.38}
+#start-button:focus-visible{outline:1px solid rgba(64,55,49,.28);outline-offset:8px}
+#start-message{min-height:3.4em;margin:24px auto 0;max-width:27em;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:10px;line-height:1.7;letter-spacing:.08em;color:rgba(62,55,49,.6)}
+#privacy{margin:20px 0 0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:9px;letter-spacing:.1em;color:rgba(62,55,49,.36)}
+#credit{position:absolute;left:24px;right:24px;bottom:max(18px,env(safe-area-inset-bottom));margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:8px;line-height:1.5;letter-spacing:.04em;color:rgba(62,55,49,.33)}
+#credit a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(62,55,49,.18)}
+@media (max-height:600px){#start h1{margin-bottom:34px}#start-inner{padding-top:30px;padding-bottom:70px}#privacy{margin-top:12px}}
+@media (prefers-reduced-motion:reduce){#start,#invitation,#reflection,#camera-switch{transition-duration:.01ms}}
 </style>
 </head>
 <body>
@@ -33,19 +45,18 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 <canvas id="three"></canvas>
 <canvas id="art"></canvas>
 <div id="shade"></div>
-<div id="gesture"></div>
-<header id="top"><span>HAND / MATERIAL</span><span style="display:flex;align-items:center;gap:10px"><span id="state">待機中</span><button id="camera-switch">カメラ切替</button></span></header>
-<div id="caption">立体作品<small>指で画面をなぞると質感が変わります</small></div>
-<div id="modes" aria-label="表現切替">
-  <button class="mode on" data-mode="membrane" aria-label="立体作品"></button>
-  <button class="mode" data-mode="line" aria-label="線"></button>
-  <button class="mode" data-mode="trace" aria-label="残像"></button>
+<div id="invitation" aria-live="polite">手を、ひらいてください</div>
+<div id="reflection">いま、自分の手を見てください</div>
+<button id="camera-switch" type="button" aria-label="カメラを切り替える">カメラ</button>
+<div id="start">
+  <div id="start-inner">
+    <h1><span>手を、ひらいて</span><span>ください</span></h1>
+    <button id="start-button" type="button">手をひらく</button>
+    <p id="start-message" role="status" aria-live="polite"></p>
+    <p id="privacy">カメラの映像は保存されません</p>
+  </div>
+  <p id="credit">3Dモデル “Hand” by <a href="https://sketchfab.com/o0i0o" target="_blank" rel="noreferrer">phi</a> / <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a></p>
 </div>
-<div id="start"><div id="start-inner">
-  <h1>手を、かざす</h1>
-  <p>カメラの前で手をゆっくり動かしてください。<br>説明はありません。近づけて、角度を変えて見てください。</p>
-  <button id="start-button">はじめる</button>
-</div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
@@ -55,34 +66,68 @@ const video=document.querySelector('#camera');
 const canvas=document.querySelector('#art');
 const ctx=canvas.getContext('2d');
 const threeCanvas=document.querySelector('#three');
-const state=document.querySelector('#state');
-const caption=document.querySelector('#caption');
-let W=0,H=0,dpr=1,mode='membrane',strength=.82,flow=.55,running=false,processing=false,mirrored=false,currentDeviceId='';
-let points=null,previous=null,lastSeen=0;
-let materialization=0,motion=.5,hadHand=false;
+const invitation=document.querySelector('#invitation');
+const reflection=document.querySelector('#reflection');
+const startScreen=document.querySelector('#start');
+const startButton=document.querySelector('#start-button');
+const startMessage=document.querySelector('#start-message');
+const cameraSwitch=document.querySelector('#camera-switch');
+let W=0,H=0,dpr=1,running=false,processing=false,mirrored=false,currentDeviceId='',currentFacingMode='';
+let points=null,lastSeen=0;
+let materialization=0,motion=.5,hadHand=false,reflectionShown=false;
+let reflectionTimer=0,cameraSwitchTimer=0;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 const palm=[0,1,5,9,13,17,0];
 const bones=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+const clamp=(value,min=0,max=1)=>Math.max(min,Math.min(max,value));
+const smoothstep=(edge0,edge1,value)=>{const x=clamp((value-edge0)/(edge1-edge0));return x*x*(3-2*x)};
 
 // ---------- 3D artwork tracking rig ----------
 const renderer3=new THREE.WebGLRenderer({canvas:threeCanvas,alpha:true,antialias:true});
 renderer3.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer3.outputEncoding=THREE.sRGBEncoding;
+renderer3.toneMapping=THREE.ACESFilmicToneMapping;
+renderer3.toneMappingExposure=.92;
+renderer3.setClearColor(0x000000,0);
 const scene3=new THREE.Scene();
 const camera3=new THREE.OrthographicCamera(0,innerWidth,0,innerHeight,-2000,2000);camera3.position.z=800;
-scene3.add(new THREE.AmbientLight(0xbfe3ea,1.15));
-const light3=new THREE.PointLight(0xd9f8ff,2.5,1800);light3.position.set(innerWidth*.35,innerHeight*.25,500);scene3.add(light3);
-const rim3=new THREE.PointLight(0xffd9e7,1.6,1600);rim3.position.set(innerWidth*.8,innerHeight*.65,350);scene3.add(rim3);
+scene3.add(new THREE.AmbientLight(0xfff7ec,1.26));
+const light3=new THREE.PointLight(0xffead6,1.42,1900);scene3.add(light3);
+const fill3=new THREE.PointLight(0xc4dbd4,.7,1700);scene3.add(fill3);
+const rim3=new THREE.PointLight(0xe9b9b3,.52,1500);scene3.add(rim3);
 const artworkRoot=new THREE.Group();scene3.add(artworkRoot);
 const artworkAnchors=Array.from({length:21},()=>{const anchor=new THREE.Group();artworkRoot.add(anchor);return anchor});
 let attachedArtwork=null;
-const handMaterial=new THREE.MeshPhysicalMaterial({color:0xa9dce2,roughness:.16,metalness:.04,transmission:.48,thickness:1.2,ior:1.42,transparent:true,opacity:.78,emissive:0x225f68,emissiveIntensity:.45,depthWrite:false});
+const handMaterial=new THREE.MeshPhysicalMaterial({color:0xd9c8b8,roughness:.72,metalness:0,transmission:.08,thickness:.4,ior:1.34,transparent:true,opacity:0,emissive:0x3e322c,emissiveIntensity:.02,depthWrite:false});
 const fallbackArtwork=new THREE.Group();artworkRoot.add(fallbackArtwork);
 const jointMeshes=Array.from({length:21},(_,i)=>{const mesh=new THREE.Mesh(new THREE.SphereGeometry(i===0?1.25:1,14,10),handMaterial);fallbackArtwork.add(mesh);return mesh});
 const boneMeshes=bones.map(()=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(1,1,1,12,1),handMaterial);fallbackArtwork.add(mesh);return mesh});
 const palmMesh=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),handMaterial);fallbackArtwork.add(palmMesh);
 const up3=new THREE.Vector3(0,1,0),a3=new THREE.Vector3(),b3=new THREE.Vector3(),mid3=new THREE.Vector3(),dir3=new THREE.Vector3(),q3=new THREE.Quaternion();
+
+function makeWashTexture(){
+  const textureCanvas=document.createElement('canvas');textureCanvas.width=textureCanvas.height=256;
+  const paint=textureCanvas.getContext('2d');
+  paint.fillStyle='#e7d8c9';paint.fillRect(0,0,256,256);
+  let seed=24681357;
+  const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+  const washes=['rgba(247,238,225,.18)','rgba(184,207,199,.14)','rgba(201,145,140,.1)','rgba(116,101,88,.065)'];
+  for(let i=0;i<72;i++){
+    const x=random()*256,y=random()*256,r=10+random()*42;
+    const wash=paint.createRadialGradient(x,y,0,x,y,r);
+    wash.addColorStop(0,washes[i%washes.length]);wash.addColorStop(1,'rgba(255,255,255,0)');
+    paint.fillStyle=wash;paint.beginPath();paint.arc(x,y,r,0,Math.PI*2);paint.fill();
+  }
+  paint.lineCap='round';
+  for(let i=0;i<22;i++){
+    paint.strokeStyle=i%3===0?'rgba(255,248,237,.15)':'rgba(103,88,76,.035)';
+    paint.lineWidth=1+random()*3;paint.beginPath();
+    const y=random()*256;paint.moveTo(-12,y);paint.bezierCurveTo(60,y+random()*18-9,174,y+random()*18-9,268,y+random()*14-7);paint.stroke();
+  }
+  const texture=new THREE.CanvasTexture(textureCanvas);texture.encoding=THREE.sRGBEncoding;texture.needsUpdate=true;return texture;
+}
+const washTexture=makeWashTexture();
 
 // Blender作品を接続するための入口。21個のanchorがMediaPipeの関節と同じ順番で動く。
 window.attachHandArtwork=(object3D)=>{
@@ -100,13 +145,13 @@ new THREE.GLTFLoader().load('assets/grasping-hand.glb',gltf=>{
   const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
   model.traverse(child=>{
     if(!child.isMesh)return;
-    child.material=child.material.clone();
-    child.material.color.set(0xb8d2d3);
-    child.material.roughness=.34;
-    child.material.metalness=.08;
-    child.material.transparent=true;
-    child.material.opacity=0;
-    child.material.depthWrite=false;
+    const original=child.material;
+    child.material=new THREE.MeshPhysicalMaterial({
+      color:0xeadfd3,map:washTexture,normalMap:original.normalMap||null,roughness:.7,metalness:0,
+      transmission:.13,thickness:.36,ior:1.34,transparent:true,opacity:0,depthWrite:false,
+      emissive:0x4a3d35,emissiveIntensity:.018,side:THREE.DoubleSide
+    });
+    if(child.material.normalMap)child.material.normalScale.set(.22,.22);
     artworkMaterials.push(child.material);
   });
   const holder=new THREE.Group(),centeredModel=new THREE.Group();
@@ -121,10 +166,17 @@ new THREE.GLTFLoader().load('assets/grasping-hand.glb',gltf=>{
     holder.position.set(palmX,palmY,-p9.z*260+8);
     holder.rotation.z=Math.atan2(p9.y-p0.y,p9.x-p0.x)-Math.PI/2;
     holder.scale.setScalar(scale);
-    artworkMaterials.forEach(material=>material.opacity=pose.materialization*(.28+strength*.68));
+    artworkMaterials.forEach(material=>{
+      material.opacity=pose.materialization*(.12+pose.materialization*.48);
+      material.transmission=.07+pose.materialization*.08;
+      material.emissiveIntensity=.012+pose.materialization*.026;
+    });
   };
   attachHandArtwork(holder);
-},undefined,()=>{state.textContent='3D作品を読み込めません'});
+},undefined,()=>{
+  if(startScreen.classList.contains('is-leaving'))showInvitation('作品を読み込めませんでした');
+  else startMessage.textContent='作品を読み込めませんでした。通信環境を確認してください。';
+});
 
 function update3DHand(){
   if(!points)return;
@@ -136,12 +188,17 @@ function update3DHand(){
   const centerX=(points[0].x+points[9].x+points[13].x)/3,centerY=(points[0].y+points[9].y+points[13].y)/3;
   const angle=Math.atan2(points[9].y-points[0].y,points[9].x-points[0].x)-Math.PI/2;
   palmMesh.position.set(centerX,centerY,-points[9].z*260+3);palmMesh.rotation.z=angle;palmMesh.scale.set(handScale*.34,handScale*.48,radius*1.7);
-  handMaterial.opacity=materialization*(.08+materialization*.72)*strength;handMaterial.emissiveIntensity=.18+materialization*.7;
+  handMaterial.opacity=materialization*(.04+materialization*.17);handMaterial.emissiveIntensity=.01+materialization*.025;
   artworkRoot.userData.pose={points,handScale,radius,materialization};
   if(attachedArtwork?.userData?.updateHandPose)attachedArtwork.userData.updateHandPose(artworkRoot.userData.pose,artworkAnchors);
 }
 
-function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);renderer3.setSize(W,H,false);camera3.right=W;camera3.bottom=H;camera3.updateProjectionMatrix()}
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  renderer3.setSize(W,H,false);camera3.right=W;camera3.bottom=H;camera3.updateProjectionMatrix();
+  light3.position.set(W*.32,H*.2,560);fill3.position.set(W*.78,H*.55,420);rim3.position.set(W*.82,H*.72,300);
+}
 addEventListener('resize',resize);resize();
 const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -151,62 +208,97 @@ function update(raw){
   if(!points){points=next;motion=.5}
   else{
     motion=next.reduce((sum,p,i)=>sum+Math.hypot(p.x-points[i].x,p.y-points[i].y),0)/(21*Math.max(W,H));
-    points=next.map((p,i)=>({x:lerp(points[i].x,p.x,.48),y:lerp(points[i].y,p.y,.48),z:lerp(points[i].z,p.z,.48)}));
+    points=next.map((p,i)=>({x:lerp(points[i].x,p.x,.44),y:lerp(points[i].y,p.y,.44),z:lerp(points[i].z,p.z,.44)}));
   }
-  previous=next;lastSeen=performance.now();
-  if(!hadHand){materialization=0;hadHand=true}
-  [4,8,12,16,20].forEach((tip,i)=>{trails[i].unshift({...points[tip],life:1});trails[i]=trails[i].slice(0,32)});
+  lastSeen=performance.now();
+  if(!hadHand){
+    materialization=0;hadHand=true;reflectionShown=false;clearTimeout(reflectionTimer);reflection.classList.remove('is-visible');
+  }
+  const slowMovement=smoothstep(.0003,.0018,motion)*(1-smoothstep(.0055,.014,motion));
+  if(slowMovement>.06){
+    [4,8,12,16,20].forEach((tip,i)=>{
+      trails[i].unshift({...points[tip],life:.35+slowMovement*.65});trails[i]=trails[i].slice(0,46);
+    });
+  }
+  hideInvitation();
 }
 
-function path(indices){ctx.beginPath();indices.forEach((n,i)=>{const p=points[n];i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});}
-function glowPath(indices,width,color,blur=18){ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=color;ctx.lineWidth=width;ctx.shadowColor=color;ctx.shadowBlur=blur;path(indices);ctx.stroke();ctx.restore()}
-function drawLine(t){
-  ctx.save();ctx.globalCompositeOperation='screen';
-  for(let layer=0;layer<5;layer++){
-    const drift=Math.sin(t*.001+layer)*layer*1.8;
-    ctx.save();ctx.translate(drift,-drift*.4);ctx.setLineDash(layer%2?[2,5]:[]);
-    fingers.forEach(f=>glowPath(f,.65+layer*.24,`rgba(238,224,207,${(.58-layer*.075)*strength})`,layer*2));ctx.restore();
+function curvedPath(indices,close=false){
+  const first=points[indices[0]];ctx.beginPath();ctx.moveTo(first.x,first.y);
+  for(let i=1;i<indices.length-1;i++){
+    const current=points[indices[i]],next=points[indices[i+1]];
+    ctx.quadraticCurveTo(current.x,current.y,(current.x+next.x)/2,(current.y+next.y)/2);
   }
-  path(palm);ctx.closePath();ctx.strokeStyle=`rgba(225,210,194,${.5*strength})`;ctx.lineWidth=.8;ctx.stroke();ctx.restore();
+  const last=points[indices[indices.length-1]];ctx.lineTo(last.x,last.y);if(close)ctx.closePath();
 }
 
-function drawTrace(){
-  ctx.save();ctx.globalCompositeOperation='lighter';
-  trails.forEach((trail,i)=>{
-    if(trail.length<2)return;ctx.beginPath();trail.forEach((p,j)=>{j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
-    const hue=185+i*8;ctx.strokeStyle=`hsla(${hue},45%,78%,${.52*strength})`;ctx.lineWidth=1.2;ctx.shadowColor=`hsla(${hue},60%,75%,.8)`;ctx.shadowBlur=13;ctx.stroke();
-    trail.forEach(p=>p.life*=.955);
+function drawImprint(t){
+  if(!points||materialization<=0)return;
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='source-over';
+  const layers=[
+    {color:'rgba(255,244,229,.54)',width:1.05,offset:0},
+    {color:'rgba(112,140,134,.24)',width:.72,offset:1.6},
+    {color:'rgba(190,131,128,.19)',width:.62,offset:-1.35}
+  ];
+  layers.forEach((layer,index)=>{
+    const drift=Math.sin(t*.00042+index*1.7)*layer.offset;
+    ctx.save();ctx.translate(drift,-drift*.38);ctx.strokeStyle=layer.color;ctx.lineWidth=layer.width;
+    ctx.globalAlpha=materialization*(.38+materialization*.5);
+    fingers.forEach(finger=>{curvedPath(finger);ctx.stroke()});
+    curvedPath(palm,true);ctx.globalAlpha*=.62;ctx.stroke();ctx.restore();
   });
-  fingers.forEach(f=>glowPath(f,.7,'rgba(244,235,224,.38)',4));ctx.restore();
+  ctx.restore();
+}
+
+function drawTraces(visible){
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='source-over';
+  const colors=[[126,151,145],[196,151,145],[244,229,211],[154,164,153],[210,169,157]];
+  trails.forEach((trail,i)=>{
+    if(trail.length>1){
+      ctx.beginPath();trail.forEach((p,j)=>{j?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)});
+      const average=trail.reduce((sum,p)=>sum+p.life,0)/trail.length,[r,g,b]=colors[i];
+      ctx.strokeStyle=`rgba(${r},${g},${b},${average*.34})`;ctx.lineWidth=.7+i*.08;ctx.stroke();
+    }
+    trail.forEach(p=>p.life*=visible ? .989 : .982);
+    while(trail.length&&trail[trail.length-1].life<.025)trail.pop();
+  });
+  ctx.restore();
+}
+
+function showInvitation(message='手を、ひらいてください'){
+  invitation.textContent=message;invitation.classList.add('is-visible');
+}
+function hideInvitation(){invitation.classList.remove('is-visible')}
+function showReflection(){
+  if(reflectionShown)return;
+  reflectionShown=true;reflection.classList.add('is-visible');clearTimeout(reflectionTimer);
+  reflectionTimer=setTimeout(()=>reflection.classList.remove('is-visible'),5200);
 }
 
 function draw(t){
-  ctx.clearRect(0,0,W,H);ctx.fillStyle=`rgba(5,7,9,${.035+flow*.05})`;ctx.fillRect(0,0,W,H);
-  const visible=points&&performance.now()-lastSeen<700;
+  ctx.clearRect(0,0,W,H);
+  const visible=running&&points&&performance.now()-lastSeen<720;
   if(visible){
-    // 静かな手ほど物質化が深く進み、動かすと少し揺らぐ
-    const stillness=Math.max(0,1-motion*42);
-    materialization=Math.min(1,materialization+.008+stillness*.014);
-    if(materialization<.3)state.textContent='膜が生まれています';
-    else if(materialization<.78)state.textContent='手をゆっくり動かしてください';
-    else state.textContent='物質化';
-  }else{
-    materialization=Math.max(0,materialization-.035);
-    if(materialization===0)hadHand=false;
+    // 急がず手を置く時間だけが、像を少しずつ深める。
+    const stillness=1-smoothstep(.0012,.007,motion);
+    materialization=Math.min(1,materialization+.0023*stillness*stillness);
+    if(materialization>.82)showReflection();
+  }else if(hadHand){
+    materialization=Math.max(0,materialization-.0034);
+    if(materialization===0){
+      hadHand=false;points=null;reflectionShown=false;clearTimeout(reflectionTimer);reflection.classList.remove('is-visible');showInvitation();
+    }
   }
-  threeCanvas.style.display=mode==='membrane'?'block':'none';
-  if(points&&materialization>0){
-    ctx.save();ctx.globalAlpha=.08+materialization*.92;
-    if(mode==='line')drawLine(t);if(mode==='trace')drawTrace();ctx.restore();
-  }
-  scene3.visible=mode==='membrane'&&materialization>0;update3DHand();renderer3.render(scene3,camera3);
+  drawTraces(visible);
+  if(points&&materialization>0)drawImprint(t);
+  scene3.visible=Boolean(points&&materialization>.002);update3DHand();renderer3.render(scene3,camera3);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
 
 const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
 hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.65,minTrackingConfidence:.65});
-hands.onResults(r=>{if(r.multiHandLandmarks?.length){update(r.multiHandLandmarks[0])}else if(performance.now()-lastSeen>650){state.textContent='手をかざしてください'}});
+hands.onResults(r=>{if(r.multiHandLandmarks?.length)update(r.multiHandLandmarks[0])});
 async function loop(){if(running&&video.readyState>=2&&!processing){processing=true;try{await hands.send({image:video})}catch(e){}processing=false}requestAnimationFrame(loop)}
 
 async function useCamera(deviceId=''){
@@ -216,40 +308,41 @@ async function useCamera(deviceId=''){
   video.srcObject=stream;await video.play();
   const settings=stream.getVideoTracks()[0].getSettings();
   currentDeviceId=settings.deviceId||deviceId;
-  mirrored=settings.facingMode==='user';
+  currentFacingMode=settings.facingMode||'';mirrored=currentFacingMode==='user';
   video.style.transform=mirrored?'scaleX(-1)':'none';
-  points=null;
+  points=null;materialization=0;hadHand=false;
 }
 
 async function chooseRearCamera(){
   const devices=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==='videoinput');
   if(devices.length<2)return;
-  const rear=devices.find(device=>/(back|rear|environment|背面|外側)/i.test(device.label))||devices.find(device=>!/(front|user|前面|内側)/i.test(device.label)&&device.deviceId!==currentDeviceId);
-  if(rear&&rear.deviceId!==currentDeviceId)await useCamera(rear.deviceId);
-  document.querySelector('#camera-switch').style.display='inline-block';
+  if(currentFacingMode!=='environment'){
+    const rear=devices.find(device=>/(back|rear|environment|背面|外側)/i.test(device.label))||devices.find(device=>!/(front|user|前面|内側)/i.test(device.label)&&device.deviceId!==currentDeviceId);
+    if(rear&&rear.deviceId!==currentDeviceId)await useCamera(rear.deviceId);
+  }
+  cameraSwitch.classList.add('is-ready');clearTimeout(cameraSwitchTimer);
+  cameraSwitchTimer=setTimeout(()=>cameraSwitch.classList.add('is-dim'),5200);
 }
 
-document.querySelector('#camera-switch').onclick=async()=>{
+cameraSwitch.onclick=async()=>{
   const devices=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==='videoinput');
   if(devices.length<2)return;
   const index=devices.findIndex(device=>device.deviceId===currentDeviceId);
-  state.textContent='カメラ切替中';
-  try{await useCamera(devices[(index+1+devices.length)%devices.length].deviceId);state.textContent=mirrored?'内側カメラ':'外側カメラ'}catch(e){state.textContent='切替できません'}
+  cameraSwitch.classList.remove('is-dim');
+  try{await useCamera(devices[(index+1+devices.length)%devices.length].deviceId);showInvitation()}
+  catch(e){showInvitation('カメラを切り替えられませんでした')}
 };
 
-document.querySelector('#start-button').onclick=async()=>{
-  state.textContent='カメラを準備しています';
-  try{await useCamera();await chooseRearCamera();document.querySelector('#start').remove();running=true;state.textContent=mirrored?'内側カメラ':'外側カメラ';loop()}catch(e){state.textContent='カメラを使用できません';alert('Safariのカメラ使用を許可してください')}
+startButton.onclick=async()=>{
+  startButton.disabled=true;startMessage.textContent='カメラを準備しています';
+  try{
+    await useCamera();await chooseRearCamera();running=true;loop();startMessage.textContent='';startScreen.classList.add('is-leaving');
+    setTimeout(()=>showInvitation(),1300);
+  }catch(e){
+    startButton.disabled=false;
+    startMessage.textContent='カメラを使用できませんでした。Safariの設定で、カメラの使用を許可してください。';
+  }
 };
-
-const labels={membrane:'立体作品',line:'線',trace:'残像'};
-document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('on',x===b));caption.childNodes[0].nodeValue=labels[mode];trails.forEach(t=>t.length=0)});
-
-let startTouch=null;
-const gesture=document.querySelector('#gesture');
-gesture.addEventListener('pointerdown',e=>{startTouch={x:e.clientX,y:e.clientY,s:strength,f:flow};gesture.setPointerCapture(e.pointerId)});
-gesture.addEventListener('pointermove',e=>{if(!startTouch)return;strength=Math.max(.15,Math.min(1,startTouch.s+(e.clientX-startTouch.x)/W));flow=Math.max(.05,Math.min(1,startTouch.f-(e.clientY-startTouch.y)/H));});
-gesture.addEventListener('pointerup',()=>startTouch=null);
 </script>
 </body>
 </html>
