@@ -59,7 +59,6 @@ let materialization=0,motion=.5,hadHand=false;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 const palm=[0,1,5,9,13,17,0];
-const silhouette=[0,1,2,3,4,3,2,5,6,7,8,7,6,9,10,11,12,11,10,13,14,15,16,15,14,17,18,19,20,19,18,17,0];
 const palmFaces=[[0,1,5],[0,5,9],[0,9,13],[0,13,17],[5,9,13],[5,13,17]];
 const fingerFaces=[];
 [[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]].forEach((finger,fi)=>{
@@ -91,16 +90,24 @@ function smoothClosedPath(indices){
   list.forEach((p,i)=>{const n=list[(i+1)%list.length];ctx.quadraticCurveTo(p.x,p.y,(p.x+n.x)/2,(p.y+n.y)/2)});ctx.closePath();
 }
 function face(indices,fill,stroke){path(indices);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=.55;ctx.stroke()}}
+function handMass(alpha,light=false){
+  const scale=Math.max(42,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y));
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  const gradient=ctx.createLinearGradient(points[0].x,points[0].y,points[12].x,points[12].y);
+  if(light){gradient.addColorStop(0,`rgba(65,101,116,${alpha*.55})`);gradient.addColorStop(.55,`rgba(139,205,211,${alpha})`);gradient.addColorStop(1,`rgba(225,237,230,${alpha*.6})`)}
+  else{gradient.addColorStop(0,`rgba(4,7,10,${alpha})`);gradient.addColorStop(1,`rgba(8,13,16,${alpha*.82})`)}
+  ctx.strokeStyle=gradient;
+  fingers.forEach((finger,i)=>{ctx.lineWidth=scale*(i===0?.20:.16);path(finger);ctx.stroke()});
+  smoothClosedPath(palm);ctx.fillStyle=gradient;ctx.fill();ctx.restore();
+}
 
 function drawMembrane(t){
   const pulse=.9+Math.sin(t*.0014)*.08;
   ctx.save();
   // 実写の手を少し沈め、3D物質へ置換されていく境界をつくる
-  smoothClosedPath(silhouette);ctx.fillStyle=`rgba(4,7,10,${.18+strength*.34})`;ctx.fill();
+  handMass(.18+strength*.34,false);
   ctx.globalCompositeOperation='screen';
-  smoothClosedPath(silhouette);
-  const body=ctx.createLinearGradient(points[0].x,points[0].y,points[12].x,points[12].y);
-  body.addColorStop(0,`rgba(70,105,119,${.12*strength})`);body.addColorStop(.48,`rgba(148,205,211,${.24*strength})`);body.addColorStop(1,`rgba(226,238,232,${.11*strength})`);ctx.fillStyle=body;ctx.fill();
+  handMass(.16*strength,true);
   path(palm);ctx.closePath();
   const g=ctx.createRadialGradient(points[9].x,points[9].y,5,points[9].x,points[9].y,Math.max(80,Math.abs(points[0].y-points[12].y)*1.05));
   g.addColorStop(0,`rgba(170,225,225,${.20*strength})`);g.addColorStop(.6,`rgba(137,177,199,${.11*strength})`);g.addColorStop(1,'rgba(20,30,40,0)');ctx.fillStyle=g;ctx.fill();
@@ -111,7 +118,7 @@ function drawMembrane(t){
   });
   fingers.forEach((f,i)=>glowPath(f,(8+i*.6)*pulse,`rgba(${170+i*7},${220-i*4},${226-i*2},${.24*strength})`,25));
   fingers.forEach(f=>glowPath(f,1.1,'rgba(241,244,238,.72)',7));
-  smoothClosedPath(silhouette);ctx.strokeStyle=`rgba(225,240,236,${.28*strength})`;ctx.lineWidth=.8;ctx.shadowColor='rgba(157,220,226,.8)';ctx.shadowBlur=12;ctx.stroke();
+  path(palm);ctx.strokeStyle=`rgba(225,240,236,${.28*strength})`;ctx.lineWidth=.8;ctx.shadowColor='rgba(157,220,226,.8)';ctx.shadowBlur=12;ctx.stroke();
   ctx.restore();
 }
 
