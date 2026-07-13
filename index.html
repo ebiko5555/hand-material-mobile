@@ -53,8 +53,9 @@ const canvas=document.querySelector('#art');
 const ctx=canvas.getContext('2d');
 const state=document.querySelector('#state');
 const caption=document.querySelector('#caption');
-let W=0,H=0,dpr=1,mode='membrane',strength=.72,flow=.55,running=false,processing=false,mirrored=false,currentDeviceId='';
+let W=0,H=0,dpr=1,mode='membrane',strength=.82,flow=.55,running=false,processing=false,mirrored=false,currentDeviceId='';
 let points=null,previous=null,lastSeen=0;
+let materialization=0,motion=.5,hadHand=false;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
 const palm=[0,1,5,9,13,17,0];
@@ -72,9 +73,13 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 
 function update(raw){
   const next=raw.map(map);
-  if(!points)points=next;
-  else points=next.map((p,i)=>({x:lerp(points[i].x,p.x,.48),y:lerp(points[i].y,p.y,.48),z:lerp(points[i].z,p.z,.48)}));
+  if(!points){points=next;motion=.5}
+  else{
+    motion=next.reduce((sum,p,i)=>sum+Math.hypot(p.x-points[i].x,p.y-points[i].y),0)/(21*Math.max(W,H));
+    points=next.map((p,i)=>({x:lerp(points[i].x,p.x,.48),y:lerp(points[i].y,p.y,.48),z:lerp(points[i].z,p.z,.48)}));
+  }
   previous=next;lastSeen=performance.now();
+  if(!hadHand){materialization=0;hadHand=true}
   [4,8,12,16,20].forEach((tip,i)=>{trails[i].unshift({...points[tip],life:1});trails[i]=trails[i].slice(0,32)});
 }
 
@@ -132,14 +137,29 @@ function drawTrace(){
 
 function draw(t){
   ctx.clearRect(0,0,W,H);ctx.fillStyle=`rgba(5,7,9,${.035+flow*.05})`;ctx.fillRect(0,0,W,H);
-  if(points&&performance.now()-lastSeen<700){if(mode==='membrane')drawMembrane(t);if(mode==='line')drawLine(t);if(mode==='trace')drawTrace()}
+  const visible=points&&performance.now()-lastSeen<700;
+  if(visible){
+    // 静かな手ほど物質化が深く進み、動かすと少し揺らぐ
+    const stillness=Math.max(0,1-motion*42);
+    materialization=Math.min(1,materialization+.008+stillness*.014);
+    if(materialization<.3)state.textContent='膜が生まれています';
+    else if(materialization<.78)state.textContent='手をゆっくり動かしてください';
+    else state.textContent='物質化';
+  }else{
+    materialization=Math.max(0,materialization-.035);
+    if(materialization===0)hadHand=false;
+  }
+  if(points&&materialization>0){
+    ctx.save();ctx.globalAlpha=.08+materialization*.92;
+    if(mode==='membrane')drawMembrane(t);if(mode==='line')drawLine(t);if(mode==='trace')drawTrace();ctx.restore();
+  }
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
 
 const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
 hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.65,minTrackingConfidence:.65});
-hands.onResults(r=>{if(r.multiHandLandmarks?.length){update(r.multiHandLandmarks[0]);state.textContent='手を見ています'}else if(performance.now()-lastSeen>650){state.textContent='手をかざしてください'}});
+hands.onResults(r=>{if(r.multiHandLandmarks?.length){update(r.multiHandLandmarks[0])}else if(performance.now()-lastSeen>650){state.textContent='手をかざしてください'}});
 async function loop(){if(running&&video.readyState>=2&&!processing){processing=true;try{await hands.send({image:video})}catch(e){}processing=false}requestAnimationFrame(loop)}
 
 async function useCamera(deviceId=''){
