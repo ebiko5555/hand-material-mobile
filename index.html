@@ -14,6 +14,7 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 #shade{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,transparent 10%,rgba(5,7,9,.2) 52%,rgba(3,4,6,.78) 100%);pointer-events:none}
 #top{position:fixed;left:20px;right:20px;top:max(18px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;z-index:3;letter-spacing:.19em;font-size:10px}
 #state{opacity:.62}
+#camera-switch{font:inherit;color:inherit;background:rgba(10,12,14,.28);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:7px 11px;letter-spacing:.12em;display:none}
 #caption{position:fixed;left:20px;bottom:max(23px,env(safe-area-inset-bottom));z-index:3;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:18px;letter-spacing:.14em}
 #caption small{display:block;margin-top:8px;font-family:sans-serif;font-size:9px;letter-spacing:.15em;opacity:.48}
 #modes{position:fixed;right:18px;bottom:max(25px,env(safe-area-inset-bottom));z-index:4;display:flex;gap:10px}
@@ -32,7 +33,7 @@ body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;touch-action
 <canvas id="art"></canvas>
 <div id="shade"></div>
 <div id="gesture"></div>
-<header id="top"><span>HAND / MATERIAL</span><span id="state">待機中</span></header>
+<header id="top"><span>HAND / MATERIAL</span><span style="display:flex;align-items:center;gap:10px"><span id="state">待機中</span><button id="camera-switch">カメラ切替</button></span></header>
 <div id="caption">光膜<small>指で画面をなぞると質感が変わります</small></div>
 <div id="modes" aria-label="表現切替">
   <button class="mode on" data-mode="membrane" aria-label="光膜"></button>
@@ -52,7 +53,7 @@ const canvas=document.querySelector('#art');
 const ctx=canvas.getContext('2d');
 const state=document.querySelector('#state');
 const caption=document.querySelector('#caption');
-let W=0,H=0,dpr=1,mode='membrane',strength=.72,flow=.55,running=false,processing=false;
+let W=0,H=0,dpr=1,mode='membrane',strength=.72,flow=.55,running=false,processing=false,mirrored=false,currentDeviceId='';
 let points=null,previous=null,lastSeen=0;
 const trails=Array.from({length:5},()=>[]);
 const fingers=[[0,1,2,3,4],[0,5,6,7,8],[0,9,10,11,12],[0,13,14,15,16],[0,17,18,19,20]];
@@ -60,7 +61,7 @@ const palm=[0,1,5,9,13,17,0];
 
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener('resize',resize);resize();
-const map=p=>({x:p.x*W,y:p.y*H,z:p.z||0});
+const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 const lerp=(a,b,t)=>a+(b-a)*t;
 
 function update(raw){
@@ -117,9 +118,37 @@ hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:.65,min
 hands.onResults(r=>{if(r.multiHandLandmarks?.length){update(r.multiHandLandmarks[0]);state.textContent='手を見ています'}else if(performance.now()-lastSeen>650){state.textContent='手をかざしてください'}});
 async function loop(){if(running&&video.readyState>=2&&!processing){processing=true;try{await hands.send({image:video})}catch(e){}processing=false}requestAnimationFrame(loop)}
 
+async function useCamera(deviceId=''){
+  if(video.srcObject)video.srcObject.getTracks().forEach(track=>track.stop());
+  const videoOptions=deviceId?{deviceId:{exact:deviceId},width:{ideal:1280},height:{ideal:720}}:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}};
+  const stream=await navigator.mediaDevices.getUserMedia({video:videoOptions,audio:false});
+  video.srcObject=stream;await video.play();
+  const settings=stream.getVideoTracks()[0].getSettings();
+  currentDeviceId=settings.deviceId||deviceId;
+  mirrored=settings.facingMode==='user';
+  video.style.transform=mirrored?'scaleX(-1)':'none';
+  points=null;
+}
+
+async function chooseRearCamera(){
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==='videoinput');
+  if(devices.length<2)return;
+  const rear=devices.find(device=>/(back|rear|environment|背面|外側)/i.test(device.label))||devices.find(device=>!/(front|user|前面|内側)/i.test(device.label)&&device.deviceId!==currentDeviceId);
+  if(rear&&rear.deviceId!==currentDeviceId)await useCamera(rear.deviceId);
+  document.querySelector('#camera-switch').style.display='inline-block';
+}
+
+document.querySelector('#camera-switch').onclick=async()=>{
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(device=>device.kind==='videoinput');
+  if(devices.length<2)return;
+  const index=devices.findIndex(device=>device.deviceId===currentDeviceId);
+  state.textContent='カメラ切替中';
+  try{await useCamera(devices[(index+1+devices.length)%devices.length].deviceId);state.textContent=mirrored?'内側カメラ':'外側カメラ'}catch(e){state.textContent='切替できません'}
+};
+
 document.querySelector('#start-button').onclick=async()=>{
   state.textContent='カメラを準備しています';
-  try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});video.srcObject=stream;await video.play();document.querySelector('#start').remove();running=true;state.textContent='手をかざしてください';loop()}catch(e){state.textContent='外側カメラを使用できません';alert('Safariのカメラ使用を許可してください')}
+  try{await useCamera();await chooseRearCamera();document.querySelector('#start').remove();running=true;state.textContent=mirrored?'内側カメラ':'外側カメラ';loop()}catch(e){state.textContent='カメラを使用できません';alert('Safariのカメラ使用を許可してください')}
 };
 
 const labels={membrane:'光膜',line:'線',trace:'残像'};
