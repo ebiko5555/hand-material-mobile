@@ -30,7 +30,15 @@ button{font:inherit}
 #start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 28% 22%,rgba(255,250,243,.94),transparent 34%),radial-gradient(circle at 77% 72%,rgba(185,205,199,.34),transparent 43%),linear-gradient(145deg,#eee6db 0%,#ddd1c3 57%,#cdbfb2 100%);transition:opacity 2.4s cubic-bezier(.22,.61,.36,1),visibility 0s linear 2.4s}
 #start::after{content:"";position:absolute;inset:8%;border:1px solid rgba(93,79,68,.08);pointer-events:none}
 #start.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
-#start-inner{position:relative;width:min(86vw,440px);padding:42px 30px;text-align:center}
+#start-inner{position:relative;display:grid;width:min(86vw,440px);padding:42px 30px;text-align:center}
+#start-inner .step{grid-area:1/1;opacity:1;visibility:visible;transition:opacity 2s ease,visibility 0s linear 0s}
+#start-inner .step.is-hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 2s ease,visibility 0s linear 2s}
+#statement{margin:0 0 48px;font-size:14px;line-height:2.6;letter-spacing:.18em;color:rgba(57,50,44,.82)}
+#to-statement{min-height:48px;padding:10px 8px;border:0;border-bottom:1px solid rgba(64,55,49,.42);border-radius:0;background:transparent;color:rgba(57,50,44,.78);font-size:13px;letter-spacing:.22em;cursor:pointer}
+#to-statement:focus-visible{outline:1px solid rgba(64,55,49,.28);outline-offset:8px}
+#closing{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding:32px;text-align:center;background:rgba(242,236,228,.97);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 2.8s ease,visibility 0s linear 2.8s}
+#closing.is-visible{opacity:1;visibility:visible;transition:opacity 2.8s ease}
+#closing p{margin:0;font-size:15px;line-height:2.7;letter-spacing:.18em;color:rgba(57,50,44,.84)}
 #start h1{margin:0 0 56px;font-weight:400;font-size:clamp(21px,5.8vw,28px);line-height:1.9;letter-spacing:.25em;text-indent:.25em;color:rgba(57,50,44,.9)}
 #start h1 span{display:block}
 #start-button{min-height:48px;padding:10px 8px;border:0;border-bottom:1px solid rgba(64,55,49,.42);border-radius:0;background:transparent;color:rgba(57,50,44,.78);font-size:13px;letter-spacing:.22em;cursor:pointer;transition:color .8s ease,border-color .8s ease,opacity .8s ease}
@@ -39,7 +47,7 @@ button{font:inherit}
 #start-message{min-height:3.4em;margin:24px auto 0;max-width:27em;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:10px;line-height:1.7;letter-spacing:.08em;color:rgba(62,55,49,.6)}
 #privacy{margin:20px 0 0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:9px;letter-spacing:.1em;color:rgba(62,55,49,.36)}
 @media (max-height:600px){#start h1{margin-bottom:34px}#start-inner{padding-top:30px;padding-bottom:30px}#privacy{margin-top:12px}}
-@media (prefers-reduced-motion:reduce){#start,#invitation,#reflection,#camera-switch{transition-duration:.01ms}}
+@media (prefers-reduced-motion:reduce){#start,#invitation,#reflection,#camera-switch,#closing,#start-inner .step,#orb-picker{transition-duration:.01ms}}
 </style>
 </head>
 <body>
@@ -58,12 +66,21 @@ button{font:inherit}
   <button type="button" data-orb="2">水</button>
   <button type="button" data-orb="3">繭</button>
 </div>
+<div id="closing" aria-hidden="true">
+  <p>触れられるまえの、<br>このしずかな時間も、<br>きっと、ケアのはじまり。<br><br>きょうの自分の手を、<br>すこしだけ、おぼえていてください。</p>
+</div>
 <div id="start">
   <div id="start-inner">
-    <h1><span>手を、ひらいて</span><span>ください</span></h1>
-    <button id="start-button" type="button">手をひらく</button>
-    <p id="start-message" role="status" aria-live="polite"></p>
-    <p id="privacy">カメラの映像は保存されません</p>
+    <div class="step" id="step-title">
+      <h1><span>手を、</span><span>ひらく</span></h1>
+      <button id="to-statement" type="button">すすむ</button>
+    </div>
+    <div class="step is-hidden" id="step-statement" aria-hidden="true">
+      <p id="statement">誰かに手を差し出すには、<br>すこし勇気がいる。<br><br>ここでは、なにも触れてこない。<br>ひらいた手のうえに、<br>ちいさなものがひとつ、しずかに宿る。</p>
+      <button id="start-button" type="button">手をひらく</button>
+      <p id="start-message" role="status" aria-live="polite"></p>
+      <p id="privacy">カメラの映像は保存されません</p>
+    </div>
   </div>
 </div>
 
@@ -80,12 +97,17 @@ const invitation=document.querySelector('#invitation');
 const reflection=document.querySelector('#reflection');
 const startScreen=document.querySelector('#start');
 const startButton=document.querySelector('#start-button');
+const closing=document.querySelector('#closing');
+const stepTitle=document.querySelector('#step-title');
+const stepStatement=document.querySelector('#step-statement');
+const toStatement=document.querySelector('#to-statement');
 const startMessage=document.querySelector('#start-message');
 const cameraSwitch=document.querySelector('#camera-switch');
 let W=0,H=0,dpr=1,running=false,processing=false,mirrored=false,currentDeviceId='',currentFacingMode='';
 let points=null,lastSeen=0,motion=.5,hadHand=false;
 let experienceAlpha=0,focusIndex=0,focusProgress=0,cycleComplete=false,completeAt=0,lastFrame=0;
 let orbInitialized=false,orbTrailTime=0,reflectionTimer=0,cameraSwitchTimer=0,orbTypeIndex=0,handTrailTime=0;
+let closingTimer=0,sawFullCycle=false;
 const nailTips=[4,8,12,16,20];
 const nailBases=[3,7,11,15,19];
 const orbTrail=[];
@@ -206,7 +228,7 @@ addEventListener('resize',resize);resize();
 const map=p=>({x:(mirrored?1-p.x:p.x)*W,y:p.y*H,z:p.z||0});
 
 function beginExperience(){
-  experienceAlpha=0;focusIndex=0;focusProgress=0;cycleComplete=false;completeAt=0;orbInitialized=false;orbTrail.length=0;handTrail.length=0;
+  experienceAlpha=0;focusIndex=0;focusProgress=0;cycleComplete=false;completeAt=0;orbInitialized=false;orbTrail.length=0;handTrail.length=0;sawFullCycle=false;
   orbGroups.forEach(g=>g.visible=false);
   if(manualOrbIndex!==null)orbTypeIndex=manualOrbIndex;
   else orbTypeIndex=(orbTypeIndex+1+Math.floor(Math.random()*(orbGroups.length-1)))%orbGroups.length;
@@ -225,7 +247,7 @@ function update(raw){
   lastSeen=performance.now();
   if(!hadHand){beginExperience();hadHand=true}
   else if(gap>2500)beginExperience();
-  hideInvitation();
+  hideInvitation();hideClosing();
 }
 
 function handScale(){return Math.max(46,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y))}
@@ -252,7 +274,7 @@ function updateFocus(t,dt){
   focusProgress+=dt*(.45+.55*stillness)/1.35;
   if(focusProgress<1)return;
   focusIndex+=1;focusProgress=0;
-  if(focusIndex>5){focusIndex=5;cycleComplete=true;completeAt=t;showReflection()}
+  if(focusIndex>5){focusIndex=5;cycleComplete=true;completeAt=t;sawFullCycle=true;showReflection()}
 }
 
 function showInvitation(message='手を、ひらいてください'){
@@ -262,6 +284,15 @@ function hideInvitation(){invitation.classList.remove('is-visible')}
 function showReflection(){
   reflection.classList.add('is-visible');clearTimeout(reflectionTimer);
   reflectionTimer=setTimeout(()=>reflection.classList.remove('is-visible'),5200);
+}
+function showClosing(){
+  closing.classList.add('is-visible');closing.setAttribute('aria-hidden','false');
+  clearTimeout(closingTimer);
+  closingTimer=setTimeout(()=>{hideClosing();showInvitation()},11000);
+}
+function hideClosing(){
+  clearTimeout(closingTimer);
+  closing.classList.remove('is-visible');closing.setAttribute('aria-hidden','true');
 }
 
 function updateOrb(t,dt,visible){
@@ -363,7 +394,11 @@ function draw(t){
   }else if(hadHand){
     experienceAlpha=clamp(experienceAlpha-dt*.22);
     if(experienceAlpha===0){
-      hadHand=false;points=null;beginExperience();showInvitation();
+      hadHand=false;points=null;
+      const done=sawFullCycle;
+      beginExperience();
+      if(done)showClosing();
+      else showInvitation();
     }
   }
   drawShade(dt);updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
@@ -421,6 +456,12 @@ cameraSwitch.onclick=async()=>{
   cameraSwitch.classList.remove('is-dim');
   try{await useCamera(devices[(index+1+devices.length)%devices.length].deviceId);showInvitation()}
   catch(e){showInvitation('カメラを切り替えられませんでした')}
+};
+
+toStatement.onclick=()=>{
+  stepTitle.classList.add('is-hidden');
+  stepStatement.classList.remove('is-hidden');
+  stepStatement.setAttribute('aria-hidden','false');
 };
 
 startButton.onclick=async()=>{
