@@ -30,15 +30,7 @@ button{font:inherit}
 #start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;overflow:hidden;background:radial-gradient(circle at 28% 22%,rgba(255,250,243,.94),transparent 34%),radial-gradient(circle at 77% 72%,rgba(185,205,199,.34),transparent 43%),linear-gradient(145deg,#eee6db 0%,#ddd1c3 57%,#cdbfb2 100%);transition:opacity 2.4s cubic-bezier(.22,.61,.36,1),visibility 0s linear 2.4s}
 #start::after{content:"";position:absolute;inset:8%;border:1px solid rgba(93,79,68,.08);pointer-events:none}
 #start.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
-#start-inner{position:relative;display:grid;width:min(86vw,440px);padding:42px 30px;text-align:center}
-#start-inner .step{grid-area:1/1;opacity:1;visibility:visible;transition:opacity 2s ease,visibility 0s linear 0s}
-#start-inner .step.is-hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity 2s ease,visibility 0s linear 2s}
-#statement{margin:0 0 48px;font-size:14px;line-height:2.6;letter-spacing:.18em;color:rgba(57,50,44,.82)}
-#to-statement{min-height:48px;padding:10px 8px;border:0;border-bottom:1px solid rgba(64,55,49,.42);border-radius:0;background:transparent;color:rgba(57,50,44,.78);font-size:13px;letter-spacing:.22em;cursor:pointer}
-#to-statement:focus-visible{outline:1px solid rgba(64,55,49,.28);outline-offset:8px}
-#closing{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding:32px;text-align:center;background:rgba(242,236,228,.97);opacity:0;visibility:hidden;pointer-events:none;transition:opacity 2.8s ease,visibility 0s linear 2.8s}
-#closing.is-visible{opacity:1;visibility:visible;transition:opacity 2.8s ease}
-#closing p{margin:0;font-size:15px;line-height:2.7;letter-spacing:.18em;color:rgba(57,50,44,.84)}
+#start-inner{position:relative;width:min(86vw,440px);padding:42px 30px;text-align:center}
 #start h1{margin:0 0 56px;font-weight:400;font-size:clamp(21px,5.8vw,28px);line-height:1.9;letter-spacing:.25em;text-indent:.25em;color:rgba(57,50,44,.9)}
 #start h1 span{display:block}
 #start-button{min-height:48px;padding:10px 8px;border:0;border-bottom:1px solid rgba(64,55,49,.42);border-radius:0;background:transparent;color:rgba(57,50,44,.78);font-size:13px;letter-spacing:.22em;cursor:pointer;transition:color .8s ease,border-color .8s ease,opacity .8s ease}
@@ -47,7 +39,7 @@ button{font:inherit}
 #start-message{min-height:3.4em;margin:24px auto 0;max-width:27em;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:10px;line-height:1.7;letter-spacing:.08em;color:rgba(62,55,49,.6)}
 #privacy{margin:20px 0 0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;font-size:9px;letter-spacing:.1em;color:rgba(62,55,49,.36)}
 @media (max-height:600px){#start h1{margin-bottom:34px}#start-inner{padding-top:30px;padding-bottom:30px}#privacy{margin-top:12px}}
-@media (prefers-reduced-motion:reduce){#start,#invitation,#reflection,#camera-switch,#closing,#start-inner .step,#orb-picker{transition-duration:.01ms}}
+@media (prefers-reduced-motion:reduce){#start,#invitation,#reflection,#camera-switch,#orb-picker{transition-duration:.01ms}}
 </style>
 </head>
 <body>
@@ -66,21 +58,12 @@ button{font:inherit}
   <button type="button" data-orb="2">水</button>
   <button type="button" data-orb="3">繭</button>
 </div>
-<div id="closing" aria-hidden="true">
-  <p>触れられるまえの、<br>このしずかな時間も、<br>きっと、ケアのはじまり。<br><br>きょうの自分の手を、<br>すこしだけ、おぼえていてください。</p>
-</div>
 <div id="start">
   <div id="start-inner">
-    <div class="step" id="step-title">
-      <h1><span>手を、</span><span>ひらく</span></h1>
-      <button id="to-statement" type="button">すすむ</button>
-    </div>
-    <div class="step is-hidden" id="step-statement" aria-hidden="true">
-      <p id="statement">誰かに手を差し出すには、<br>すこし勇気がいる。<br><br>ここでは、なにも触れてこない。<br>ひらいた手のうえに、<br>ちいさなものがひとつ、しずかに宿る。</p>
-      <button id="start-button" type="button">手をひらく</button>
-      <p id="start-message" role="status" aria-live="polite"></p>
-      <p id="privacy">カメラの映像は保存されません</p>
-    </div>
+    <h1><span>手を、</span><span>ひらく</span></h1>
+    <button id="start-button" type="button">手をひらく</button>
+    <p id="start-message" role="status" aria-live="polite"></p>
+    <p id="privacy">カメラの映像は保存されません</p>
   </div>
 </div>
 
@@ -97,21 +80,18 @@ const invitation=document.querySelector('#invitation');
 const reflection=document.querySelector('#reflection');
 const startScreen=document.querySelector('#start');
 const startButton=document.querySelector('#start-button');
-const closing=document.querySelector('#closing');
-const stepTitle=document.querySelector('#step-title');
-const stepStatement=document.querySelector('#step-statement');
-const toStatement=document.querySelector('#to-statement');
 const startMessage=document.querySelector('#start-message');
 const cameraSwitch=document.querySelector('#camera-switch');
 let W=0,H=0,dpr=1,running=false,processing=false,mirrored=false,currentDeviceId='',currentFacingMode='';
 let points=null,lastSeen=0,motion=.5,hadHand=false;
 let experienceAlpha=0,focusIndex=0,focusProgress=0,cycleComplete=false,completeAt=0,lastFrame=0;
 let orbInitialized=false,orbTrailTime=0,reflectionTimer=0,cameraSwitchTimer=0,orbTypeIndex=0,handTrailTime=0;
-let closingTimer=0,sawFullCycle=false;
+let quietTimer=0,sawFullCycle=false,lastPose=null;
 const nailTips=[4,8,12,16,20];
 const nailBases=[3,7,11,15,19];
 const orbTrail=[];
 const handTrail=[];
+const imprints=[];
 const HAND_CHAINS=[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20],[0,1,5,9,13,17,0]];
 const clamp=(value,min=0,max=1)=>Math.max(min,Math.min(max,value));
 const smoothstep=(edge0,edge1,value)=>{const x=clamp((value-edge0)/(edge1-edge0));return x*x*(3-2*x)};
@@ -244,10 +224,11 @@ function update(raw){
     motion=next.reduce((sum,p,i)=>sum+Math.hypot(p.x-points[i].x,p.y-points[i].y),0)/(21*Math.max(W,H));
     points=next.map((p,i)=>({x:lerp(points[i].x,p.x,.44),y:lerp(points[i].y,p.y,.44),z:lerp(points[i].z,p.z,.44)}));
   }
+  lastPose=points;
   lastSeen=performance.now();
   if(!hadHand){beginExperience();hadHand=true}
   else if(gap>2500)beginExperience();
-  hideInvitation();hideClosing();
+  hideInvitation();clearTimeout(quietTimer);
 }
 
 function handScale(){return Math.max(46,Math.hypot(points[0].x-points[9].x,points[0].y-points[9].y))}
@@ -285,14 +266,13 @@ function showReflection(){
   reflection.classList.add('is-visible');clearTimeout(reflectionTimer);
   reflectionTimer=setTimeout(()=>reflection.classList.remove('is-visible'),5200);
 }
-function showClosing(){
-  closing.classList.add('is-visible');closing.setAttribute('aria-hidden','false');
-  clearTimeout(closingTimer);
-  closingTimer=setTimeout(()=>{hideClosing();showInvitation()},11000);
-}
-function hideClosing(){
-  clearTimeout(closingTimer);
-  closing.classList.remove('is-visible');closing.setAttribute('aria-hidden','true');
+/* 手を離したあと、膜のうえに輪郭だけがしばらく残る */
+function leaveImprint(){
+  imprints.push({
+    pts:lastPose.map(p=>({x:p.x+(Math.random()-.5)*2.5,y:p.y+(Math.random()-.5)*2.5})),
+    width:1.2,life:1
+  });
+  if(imprints.length>3)imprints.shift();
 }
 
 function updateOrb(t,dt,visible){
@@ -325,22 +305,29 @@ function updateHandTrail(t,visible){
   if(handTrail.length>12)handTrail.shift();
 }
 
-/* 背景をベージュの膜で隠し、手のまわりだけ柔らかく開く */
+/* 背景をベージュの膜で隠し、手のまわりだけ柔らかく開く。
+   膜の開口は体験の段階とともに動く：
+   宿る＝手全体 → めぐる＝みつめる指先へ窄まる → 旅を終える＝ゆっくり閉じてゆく */
 let shadeX=0,shadeY=0,shadeR=0;
-function drawShade(dt){
+function drawShade(t,dt){
   sctx.clearRect(0,0,W,H);
   sctx.fillStyle='rgba(242,236,228,.99)';
   sctx.fillRect(0,0,W,H);
   if(points&&experienceAlpha>0){
     const ids=[0,5,9,13,17];
     let px=0,py=0;ids.forEach(id=>{px+=points[id].x;py+=points[id].y});px/=ids.length;py/=ids.length;
-    const targetR=handScale()*2.1;
-    if(!shadeR){shadeX=px;shadeY=py;shadeR=targetR}
-    else{
-      const k=1-Math.exp(-dt*5);
-      shadeX=lerp(shadeX,px,k);shadeY=lerp(shadeY,py,k);shadeR=lerp(shadeR,targetR,k);
+    let cx=px,cy=py,rFactor=1;
+    if(focusIndex>0&&!cycleComplete){
+      cx=lerp(px,orbPosition.x,.45);cy=lerp(py,orbPosition.y,.45);rFactor=.82;
     }
-    const open=.92*experienceAlpha;
+    const targetR=handScale()*2.1*rFactor;
+    if(!shadeR){shadeX=cx;shadeY=cy;shadeR=targetR}
+    else{
+      const k=1-Math.exp(-dt*3.5);
+      shadeX=lerp(shadeX,cx,k);shadeY=lerp(shadeY,cy,k);shadeR=lerp(shadeR,targetR,k);
+    }
+    const settle=cycleComplete?lerp(1,.55,clamp((t-completeAt)/14000)):1;
+    const open=.92*experienceAlpha*settle;
     const hole=sctx.createRadialGradient(shadeX,shadeY,0,shadeX,shadeY,shadeR);
     hole.addColorStop(0,`rgba(0,0,0,${open})`);
     hole.addColorStop(.5,`rgba(0,0,0,${open*.85})`);
@@ -350,6 +337,17 @@ function drawShade(dt){
     sctx.beginPath();sctx.arc(shadeX,shadeY,shadeR,0,Math.PI*2);sctx.fill();
     sctx.globalCompositeOperation='source-over';
   }else if(experienceAlpha<=0)shadeR=0;
+}
+
+function traceHandPath(pts){
+  HAND_CHAINS.forEach(chain=>{
+    const first=pts[chain[0]];ctx.moveTo(first.x,first.y);
+    for(let i=1;i<chain.length-1;i++){
+      const a=pts[chain[i]],b=pts[chain[i+1]];
+      ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2);
+    }
+    const end=pts[chain[chain.length-1]];ctx.lineTo(end.x,end.y);
+  });
 }
 
 function drawTraces(dt){
@@ -367,20 +365,23 @@ function drawTraces(dt){
       const alpha=clamp(snap.life)*.2*Math.max(experienceAlpha,.35);
       if(alpha<=0)return;
       ctx.strokeStyle=`rgba(122,150,142,${alpha})`;ctx.lineWidth=snap.width;
-      ctx.beginPath();
-      HAND_CHAINS.forEach(chain=>{
-        const first=snap.pts[chain[0]];ctx.moveTo(first.x,first.y);
-        for(let i=1;i<chain.length-1;i++){
-          const a=snap.pts[chain[i]],b=snap.pts[chain[i+1]];
-          ctx.quadraticCurveTo(a.x,a.y,(a.x+b.x)/2,(a.y+b.y)/2);
-        }
-        const end=snap.pts[chain[chain.length-1]];ctx.lineTo(end.x,end.y);
-      });
-      ctx.stroke();
+      ctx.beginPath();traceHandPath(snap.pts);ctx.stroke();
     });
     ctx.restore();
     handTrail.forEach(snap=>snap.life-=dt*.16);
     while(handTrail.length&&handTrail[0].life<=0)handTrail.shift();
+  }
+  if(imprints.length){
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.shadowColor='rgba(238,232,222,.4)';ctx.shadowBlur=4;
+    imprints.forEach(snap=>{
+      const alpha=clamp(snap.life)*.3;
+      ctx.strokeStyle=`rgba(122,150,142,${alpha})`;ctx.lineWidth=snap.width;
+      ctx.beginPath();traceHandPath(snap.pts);ctx.stroke();
+      snap.life-=dt*.05;
+    });
+    ctx.restore();
+    while(imprints.length&&imprints[0].life<=0)imprints.shift();
   }
   orbTrail.forEach(point=>point.life-=dt*(cycleComplete?.34:.115));
   while(orbTrail.length&&orbTrail[0].life<=0)orbTrail.shift();
@@ -394,14 +395,15 @@ function draw(t){
   }else if(hadHand){
     experienceAlpha=clamp(experienceAlpha-dt*.22);
     if(experienceAlpha===0){
-      hadHand=false;points=null;
+      hadHand=false;
       const done=sawFullCycle;
-      beginExperience();
-      if(done)showClosing();
+      if(done&&lastPose)leaveImprint();
+      points=null;beginExperience();
+      if(done){clearTimeout(quietTimer);quietTimer=setTimeout(showInvitation,8000)}
       else showInvitation();
     }
   }
-  drawShade(dt);updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
+  drawShade(t,dt);updateOrb(t,dt,visible);updateHandTrail(t,visible);drawTraces(dt);renderer3.render(scene3,camera3);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
@@ -456,12 +458,6 @@ cameraSwitch.onclick=async()=>{
   cameraSwitch.classList.remove('is-dim');
   try{await useCamera(devices[(index+1+devices.length)%devices.length].deviceId);showInvitation()}
   catch(e){showInvitation('カメラを切り替えられませんでした')}
-};
-
-toStatement.onclick=()=>{
-  stepTitle.classList.add('is-hidden');
-  stepStatement.classList.remove('is-hidden');
-  stepStatement.setAttribute('aria-hidden','false');
 };
 
 startButton.onclick=async()=>{
